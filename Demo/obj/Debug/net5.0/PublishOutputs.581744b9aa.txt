@@ -1,0 +1,9 @@
+/datadrive/projects/Demo/bin/Debug/net5.0/publish/Demo
+/datadrive/projects/Demo/bin/Debug/net5.0/publish/Demo.dll
+/datadrive/projects/Demo/bin/Debug/net5.0/publish/Demo.deps.json
+/datadrive/projects/Demo/bin/Debug/net5.0/publish/Demo.runtimeconfig.json
+/datadrive/projects/Demo/bin/Debug/net5.0/publish/Demo.pdb
+/datadrive/projects/Demo/bin/Debug/net5.0/publish/Newtonsoft.Json.dll
+/datadrive/projects/Demo/bin/Debug/net5.0/publish/ExcelReader.dll
+/datadrive/projects/Demo/bin/Debug/net5.0/publish/ExcelReader.pdb
+/datadrive/projects/Demo/bin/Debug/net5.0/publish/ExcelReader.xml
