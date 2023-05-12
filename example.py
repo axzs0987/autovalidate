@@ -1,5 +1,5 @@
-from core.analyze_formula import generate_view_json, generate_one_before_feature, generate_one_after_feature
-from core.finegrain_model import FinegrainedModel
+from core_py.analyze_formula import generate_view_json, generate_one_before_feature, generate_one_after_feature
+from core_py.finegrain_model import FinegrainedModel
 import json
 
 def generate_view_features(workbook_name, sheetname, workbook_feature_path, save_path, is_sheet=False, row=None, col=None):
