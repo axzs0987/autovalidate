@@ -100,5 +100,5 @@ class SimilarSheetGenerator:
                 print(need_find_file_sheet_name + ' 寻找到了比较相似的特征')
             top_k.append((id2filesheet[ids[i]], float(D[0][i_index])))
         print(f'------------------------end search of {filesheet}')
-        with open(save_path + '/' + filesheet + '.json', 'w') as f:
+        with open(save_path + filesheet + '.json', 'w') as f:
             json.dump(top_k, f)

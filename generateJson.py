@@ -61,8 +61,8 @@ class GenerateJsonMsg:
         self.file_lists_path = "./analyze-dv-1"
         self.constrained_file_path = "./analyze-dv-1/" + data_set_name + "/" + data_set_name + "_workbook.json"
         self.similar_root_path = "./data_drive/data_two/" + data_set_name + "/"
-        self.save_similar_path = self.data_driver_path + data_set_name + "_similar_res/"
-        self.save_similar_name= data_set_name + "_similar_res/"
+        self.save_similar_path = self.data_driver_path + "similar_res/"
+        self.save_similar_name= "similar_res/"
         # 保存和这张表相似的表的公式
 
 
@@ -145,7 +145,7 @@ class GenerateJsonMsg:
         """
         生成需要生成公式的表
         从Formulas_with_id.json读取,
-        filesheet来自data_drive/data_two/data_set_name/ibm_data_set_similar_res/
+        filesheet来自data_drive/data_two/data_set_name/similar_res/
         105419042552415731769252671704639115290-part_2_p8_5.2_and_5.2.1_patch_compatibility_matrix.xlsx-
         --Fix Pack
         Information---51---6.npy.json
