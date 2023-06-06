@@ -37,7 +37,7 @@ class GenerateJsonMsg:
         self.zip_file_path = self.data_set_path + "zip_files/"
         # self.save_file_names_json_path = self.save_file_names_path + self.data_set_name + "_file_names"
         # 测试用
-        self.save_file_names_json_path = self.save_file_names_path + self.data_set_name + "_file_names_1"
+        self.save_file_names_json_path = self.save_file_names_path + "file_names"
 
         # data_driver_path
         self.data_driver_path = './data_drive/data_two/' + data_set_name + '/'

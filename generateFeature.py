@@ -38,8 +38,12 @@ class ViewFeaturesGenerator:
         :param col: 指定某列
         :return: npy数组,生成的特征
         """
+        formula_token = f"{workbook_name}---{sheet_name}---{row}---{col}"
         if not is_sheet and row is not None and col is not None:
             # 提取细粒度的特征
+            if os.path.exists(self.view_nparray_path + formula_token + '.npy'):
+                print(f'{formula_token}特征已创建')
+                return
             model_path = './finegrained_model'
             self.generate_view_json(workbook_name, sheet_name, row, col,
                                     workbook_feature_path=self.workbook_feature_path, save_path=self.view_json_path)
@@ -60,6 +64,9 @@ class ViewFeaturesGenerator:
         else:
             ### row=51, col=6是指视窗的中心位置，对应到左上角就是1,1, 提取粗粒度的特征
             model_path = './coarsegrained_model'
+            if os.path.exists(self.save_path + formula_token + '.npy'):
+                print(f'{formula_token}特征已创建')
+                return
             self.generate_view_json(workbook_name, sheet_name, 51, 6, workbook_feature_path=self.workbook_feature_path,
                                     save_path=self.sheet_json_path)
             self.generate_one_before_feature(workbook_name, sheet_name, 51, 6,

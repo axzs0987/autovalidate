@@ -11,6 +11,7 @@ pip install -r requirements.txt
 ## C#模块
 #### 抽取xlsx文件夹内容为json
 #### 抽取xlsx文件夹下的内容的有公式的表格
+其中zip压缩文件需要手动添加到指定的data_set/data_set_name/zip_files下
 可以修改配置，修改需要提取内容的数据集名称
 ```
 cd Demo
