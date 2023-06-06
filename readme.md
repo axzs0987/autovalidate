@@ -7,7 +7,36 @@ dotnet = 5.0.302
 pip install -r requirements.txt
 ```
 
+# 离线和在线Demo模块(请结合后续模块阅读后理解)
+## C#模块
+#### 抽取xlsx文件夹内容为json
+#### 抽取xlsx文件夹下的内容的有公式的表格
+可以修改配置，修改需要提取内容的数据集名称
+```
+cd Demo
+dotnet run
+```
+
+## offline.py
+data_set_name, excel_name, sheet_name, row, col需要在文件中手动配置
+```
+python offline.py
+```
+    generate_feature(data_set_name) 生成表粗粒度的特征
+    find_similar_by_all_file(data_set_name) 寻找所有表的相似表
+    formula_cleasing(data_set_name) 公式清洗
+    generate_feature_fine_all(data_set_name) 生成所有表细粒度的特征
+
+## online.py
+data_set_name, excel_name, sheet_name, row, col需要在文件中手动配置
+```
+python online.py
+```
+    generate_feature_fine_by_single(data_set_name, excel_name, sheet_name, row, col) 生成单表所有特征，包括粗粒度和细粒度
+    find_similar_by_single_file(data_set_name, excel_name, sheet_name) 找到与这张表相似的表
+    find_similar_formular_by_single(data_set_name, excel_name, sheet_name, row, col) 推荐公式
 # 生成粗/细粒度的特征
+
 
 ## 第一步：从xlsx文件抽取信息workbook level的信息，存为json
 ```
@@ -20,7 +49,7 @@ Dotnet run
 （2）extract_all_workbook(wokrbook_root_path, save_path, zip_file_path, entry_root_path); 批量抽取wokrbook_root_path下所有xlsx文件的特征。
 
 
-## 第二步：生成特征
+## 第二步：生成特征 offline离线操作
 
 函数 generate_view_features(workbook_name, sheetname, workbook_feature_path, save_path, is_sheet=False, row=None, col=None);
 workbook_name: workbook的名字
