@@ -141,7 +141,7 @@ class ViewFeaturesGenerator:
         formula_token = f"{file_name}---{sheet_name}---{row}---{col}"
         model = torch.load(model_path)
         if os.path.exists(save_path + formula_token + '.npy'):
-            print('特征已创建')
+            print(f'{formula_token}特征已创建')
             return
         try:
             feature_nparray = np.load(source_root_path + formula_token + '.npy', allow_pickle=True)

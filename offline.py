@@ -120,7 +120,7 @@ def generate_feature_fine_all(data_set_name):
 
 if __name__ == '__main__':
     print("------------------------")
-    # generate_feature(data_set_name)
+    generate_feature(data_set_name)
     find_similar_by_all_file(data_set_name)
     formula_cleasing(data_set_name)
     generate_feature_fine_all(data_set_name)

@@ -18,7 +18,7 @@ def generate_feature_fine_by_single(data_set_name, file_name, sheet_name, row, c
     :param sheet_name: 对应的sheet名称
     :param row: 行
     :param col: 列
-    :return: 生成对应的表的细粒度的特征, 指定某张表的某个位置
+    :return: 生成粗粒度和细粒度的特征, 指定某张表的某个位置
     """
     data_set_msg = GenerateJsonMsg(data_set_name, file_name=file_name, sheet_name=sheet_name,
                                    row=row, col=col)
@@ -33,6 +33,10 @@ def generate_feature_fine_by_single(data_set_name, file_name, sheet_name, row, c
                                       sheet_nparray_path=data_set_msg.sheet_nparray_path,
                                       row=row, col=col, fine_save_feature_path=data_set_msg.fine_save_feature_path,
                                       fine_save_feature_test_path=data_set_msg.fine_save_feature_path_test)
+    generator.generate_view_features(workbook_name=file_name,
+                                     sheet_name=sheet_name,
+                                     row=51,
+                                     col=6, is_sheet=True, is_test=False)
     generator.generate_view_features(workbook_name=file_name,
                                      sheet_name=sheet_name,
                                      row=row,
@@ -83,5 +87,6 @@ def find_similar_formular_by_single(data_set_name, excel_name, sheet_name, row, 
 if __name__ == '__main__':
     # Test Case
     print('------------------------')
-    # generate_feature_fine_by_single(data_set_name, excel_name, sheet_name, row, col)
+    generate_feature_fine_by_single(data_set_name, excel_name, sheet_name, row, col)
+    find_similar_by_single_file(data_set_name, excel_name, sheet_name)
     find_similar_formular_by_single(data_set_name, excel_name, sheet_name, row, col)
