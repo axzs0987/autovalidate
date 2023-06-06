@@ -287,7 +287,7 @@ def genearte_training_triples(generate_positive):
 def generate_r1c1_2_refcell():
     filelist = os.listdir(root_path + 'formula_template')
     if version == 0:
-        with open('fortune500_formulatoken2r1c1.json', 'r') as f:
+        with open('small_data_test_formulatoken2r1c1.json', 'r') as f:
             fortune500_formulatoken2r1c1 = json.load(f)
         with open("Formulas_fortune500_with_id.json",'r') as f:
             formulas = json.load(f)

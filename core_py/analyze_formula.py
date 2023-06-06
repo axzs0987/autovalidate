@@ -8,27 +8,37 @@ from sentence_transformers import SentenceTransformer
 from torch.autograd import Variable
 import shutil
 import time
+import faiss
 import copy
 import matplotlib.pyplot as plt
 import random
 import xlrd
+
 # root_path = '/datadrive-2/data/top10domain_test/'
 # root_path = '/datadrive-2/data/middle10domain_test/'
-root_path = '/datadrive-2/data/fortune500_test/'
+# root_path = '/datadrive-2/data/fortune500_test/'
+
+root_path = '../data_drive/data_two/'
+
+
 def look_savedsheets():
-    filenames =  os.listdir("filename2bertfeature/")
+    filenames = os.listdir("filename2bertfeature/")
     print(len(filenames))
+
+
 def look_fromula():
-    with open("TrainingFormulas_mergerange_custom_new_res_1.json",'r') as f:
+    with open("TrainingFormulas_mergerange_custom_new_res_1.json", 'r') as f:
         formulas = json.load(f)
-    
-    print(formulas['../../data/000/01be5462b92dd3f2540f868351fb2310_YXRsYW50aWNxdWFsaXR5Lm9yZwk1NC4xNjMuMjI1LjIzNQ==.xls.xlsx---Terminations by LOS']['RC[-1]/R12C4'])
+
+    print(formulas[
+              '../../data/000/01be5462b92dd3f2540f868351fb2310_YXRsYW50aWNxdWFsaXR5Lm9yZwk1NC4xNjMuMjI1LjIzNQ==.xls.xlsx---Terminations by LOS'][
+              'RC[-1]/R12C4'])
 
 
 def look_sheetfeatures():
     with open('custom_bert_notmask_dvid2sheetfeature.json', 'r') as f:
         dvid2sheetfeature = json.load(f)
-    with open("Formulas_20000sheets_groupr1c1_custom.json",'r') as f:
+    with open("Formulas_20000sheets_groupr1c1_custom.json", 'r') as f:
         formulas_20000sheets = json.load(f)
     pprint.pprint(len(dvid2sheetfeature.keys()))
     first_dvid = list(dvid2sheetfeature.keys())[0]
@@ -53,17 +63,17 @@ def look_sheetfeatures():
     #                     # return
     #         # break
 
-    
 
 def save_files():
-    with open("Formulas_20000sheets_groupr1c1.json",'r') as f:
+    with open("Formulas_20000sheets_groupr1c1.json", 'r') as f:
         formulas_20000sheets = json.load(f)
 
-    with open("20000sampled_files.json",'w') as f:
+    with open("20000sampled_files.json", 'w') as f:
         json.dump(list(formulas_20000sheets.keys()), f)
 
+
 def look_Formulas_20000sheets_r1c1():
-    with open("Formulas_20000sheets_groupr1c1.json",'r') as f:
+    with open("Formulas_20000sheets_groupr1c1.json", 'r') as f:
         formulas_20000sheets = json.load(f)
 
     # pprint.pprint(list(formulas_20000sheets.keys()))
@@ -72,10 +82,11 @@ def look_Formulas_20000sheets_r1c1():
         if len(formulas_20000sheets[filename][item]) > 1:
             pprint.pprint(formulas_20000sheets[filename][item])
 
+
 def devide_range():
     # with open("Formulas_20000sheets_groupr1c1.json",'r') as f:
     #     formulas_20000sheets = json.load(f)
-    with open("Formulas_20000sheets_groupr1c1.json",'r') as f:
+    with open("Formulas_20000sheets_groupr1c1.json", 'r') as f:
         formulas_20000sheets = json.load(f)
 
     result = {}
@@ -84,7 +95,7 @@ def devide_range():
         for r1c1 in formulas_20000sheets[filesheet]:
             id_ = 0
             res = {}
-            item = {'fr': 0, 'fc': 0, 'lr': 0, 'lc': 0, 'r1c1': r1c1, 'formulas':[]}
+            item = {'fr': 0, 'fc': 0, 'lr': 0, 'lc': 0, 'r1c1': r1c1, 'formulas': []}
 
             for formula in formulas_20000sheets[filesheet][r1c1]:
                 is_add = False
@@ -94,54 +105,59 @@ def devide_range():
                     item['fc'] = formula['column']
                     item['lc'] = formula['column']
                     item['formulas'].append(formula)
-                elif formula['row'] == item['fr'] - 1 and formula['column'] >= item['fc'] and formula['column'] <= item['lc'] :
+                elif formula['row'] == item['fr'] - 1 and formula['column'] >= item['fc'] and formula['column'] <= item[
+                    'lc']:
                     item['fr'] = formula['row']
                     item['formulas'].append(formula)
-                elif formula['row'] == item['lr'] + 1 and formula['column'] >= item['fc'] and formula['column'] <= item['lc'] :
+                elif formula['row'] == item['lr'] + 1 and formula['column'] >= item['fc'] and formula['column'] <= item[
+                    'lc']:
                     item['lr'] = formula['row']
                     item['formulas'].append(formula)
-                elif formula['column'] == item['fc'] - 1 and formula['row'] >= item['fr'] and formula['row'] <= item['lr'] :
+                elif formula['column'] == item['fc'] - 1 and formula['row'] >= item['fr'] and formula['row'] <= item[
+                    'lr']:
                     item['fc'] = formula['column']
                     item['formulas'].append(formula)
-                elif formula['column'] == item['lc'] + 1 and formula['row'] >= item['fr'] and formula['row'] <= item['lr'] :
+                elif formula['column'] == item['lc'] + 1 and formula['row'] >= item['fr'] and formula['row'] <= item[
+                    'lr']:
                     item['lc'] = formula['column']
                     item['formulas'].append(formula)
                 else:
-                    res[id_]=item
+                    res[id_] = item
                     is_add = True
-                    item = {'fr': 0, 'fc': 0, 'lr': 0, 'lc': 0, 'r1c1': r1c1, 'formulas':[]}
+                    item = {'fr': 0, 'fc': 0, 'lr': 0, 'lc': 0, 'r1c1': r1c1, 'formulas': []}
                     item['fr'] = formula['row']
                     item['lr'] = formula['row']
                     item['fc'] = formula['column']
                     item['lc'] = formula['column']
                     item['formulas'].append(formula)
                     id_ += 1
-                    
+
             # if len(formulas_20000sheets[filesheet][r1c1]) == 1:
-            if item['fr'] !=0:
-                res[id_]=item
+            if item['fr'] != 0:
+                res[id_] = item
             result[filesheet][r1c1] = res
-    with open("Formulas_20000sheets_mergerange.json",'w') as f:
+    with open("Formulas_20000sheets_mergerange.json", 'w') as f:
         json.dump(result, f)
+
 
 def devide_range_recheck():
     # with open("Formulas_20000sheets_groupr1c1_custom.json",'r') as f:
     #     formulas_20000sheets = json.load(f)
-    with open("origin_top10domain_formulas_groupr1c1.json",'r') as f:
+    with open("origin_top10domain_formulas_groupr1c1.json", 'r') as f:
         formulas_20000sheets = json.load(f)
 
     result = {}
     count = 0
     for filesheet in formulas_20000sheets:
         # if filesheet.replace('/UnzipData','') != '../../data/000/0176061ac2ea686b8887dc8fed2805f0_d3cyLmp1c3RhbnN3ZXIuY29tCTEwNC4xNi4xMjEuMTEy.xls.xlsx---Questionnaire_Input':
-            # continue
+        # continue
         result[filesheet] = {}
         count += 1
         print(count, len(formulas_20000sheets))
         for r1c1 in formulas_20000sheets[filesheet]:
             id_ = 0
             res = {}
-            item = {'fr': 0, 'fc': 0, 'lr': 0, 'lc': 0, 'r1c1': r1c1, 'formulas':[]}
+            item = {'fr': 0, 'fc': 0, 'lr': 0, 'lc': 0, 'r1c1': r1c1, 'formulas': []}
             # print('r1c1', r1c1)
             for formula in formulas_20000sheets[filesheet][r1c1]:
                 is_add = False
@@ -156,41 +172,45 @@ def devide_range_recheck():
                     item['fc'] = formula['column']
                     item['lc'] = formula['column']
                     item['formulas'].append(formula)
-                elif formula['row'] == item['fr'] - 1 and formula['column'] >= item['fc'] and formula['column'] <= item['lc'] :
+                elif formula['row'] == item['fr'] - 1 and formula['column'] >= item['fc'] and formula['column'] <= item[
+                    'lc']:
                     # print('r-1')
                     item['fr'] = formula['row']
                     item['formulas'].append(formula)
-                elif formula['row'] == item['lr'] + 1 and formula['column'] >= item['fc'] and formula['column'] <= item['lc'] :
+                elif formula['row'] == item['lr'] + 1 and formula['column'] >= item['fc'] and formula['column'] <= item[
+                    'lc']:
                     # print('r+1')
                     item['lr'] = formula['row']
                     item['formulas'].append(formula)
-                elif formula['column'] == item['fc'] - 1 and formula['row'] >= item['fr'] and formula['row'] <= item['lr'] :
+                elif formula['column'] == item['fc'] - 1 and formula['row'] >= item['fr'] and formula['row'] <= item[
+                    'lr']:
                     # print('c-1')
                     item['fc'] = formula['column']
                     item['formulas'].append(formula)
-                elif formula['column'] == item['lc'] + 1 and formula['row'] >= item['fr'] and formula['row'] <= item['lr'] :
+                elif formula['column'] == item['lc'] + 1 and formula['row'] >= item['fr'] and formula['row'] <= item[
+                    'lr']:
                     # print('c+1')
                     item['lc'] = formula['column']
                     item['formulas'].append(formula)
                 else:
                     # print('else')
-                    res[id_]=item
+                    res[id_] = item
                     # if not os.path.exists("formulas/"+filesheet.split('/')[5]):
                     #     os.mkdir("formulas/"+filesheet.split('/')[5])
                     # with open("formulas/"+filesheet.split('/')[5]+"/"+str(item['fr'])+'_'+str(item['fc'])+".json",'w') as f:
                     #     json.dump(item, f)
                     is_add = True
-                    item = {'fr': 0, 'fc': 0, 'lr': 0, 'lc': 0, 'r1c1': r1c1, 'formulas':[]}
+                    item = {'fr': 0, 'fc': 0, 'lr': 0, 'lc': 0, 'r1c1': r1c1, 'formulas': []}
                     item['fr'] = formula['row']
                     item['lr'] = formula['row']
                     item['fc'] = formula['column']
                     item['lc'] = formula['column']
                     item['formulas'].append(formula)
                     id_ += 1
-                    
+
             # if len(formulas_20000sheets[filesheet][r1c1]) == 1:
-            if item['fr'] !=0:
-                res[id_]=item
+            if item['fr'] != 0:
+                res[id_] = item
                 # if not os.path.exists("formulas/"+filesheet.split('/')[5]):
                 #     os.mkdir("formulas/"+filesheet.split('/')[5])
                 # with open("formulas/"+filesheet.split('/')[5]+"/"+str(item['fr'])+'_'+str(item['fc'])+".json",'w') as f:
@@ -206,8 +226,9 @@ def devide_range_recheck():
 
     # with open("Formulas_20000sheets_mergerange_custom.json",'w') as f:
     #     json.dump(result, f)
-    with open("origin_top10domain_mergerange.json",'w') as f:
+    with open("origin_top10domain_mergerange.json", 'w') as f:
         json.dump(result, f)
+
 
 def devide_training_range_recheck():
     # with open("TrainingFormulas_groupby_r1c1.json",'r') as f:
@@ -215,21 +236,21 @@ def devide_training_range_recheck():
     # with open("origin_top10domain_groupby_r1c1.json",'r') as f:
     # with open("origin_middle10domain_groupby_r1c1.json",'r') as f:
     #     formulas_20000sheets = json.load(f)
-    with open("origin_fortune500_groupby_r1c1.json",'r') as f:
+    with open("../data_set/formula_data_set/origin_fortune500_groupby_r1c1.json", 'r') as f:
         formulas_20000sheets = json.load(f)
 
     result = {}
     count = 0
     for filesheet in formulas_20000sheets:
         # if filesheet.replace('/UnzipData','') != '../../data/000/0176061ac2ea686b8887dc8fed2805f0_d3cyLmp1c3RhbnN3ZXIuY29tCTEwNC4xNi4xMjEuMTEy.xls.xlsx---Questionnaire_Input':
-            # continue
+        # continue
         result[filesheet] = {}
         count += 1
         print(count, len(formulas_20000sheets))
         for r1c1 in formulas_20000sheets[filesheet]:
             id_ = 0
             res = {}
-            item = {'fr': 0, 'fc': 0, 'lr': 0, 'lc': 0, 'r1c1': r1c1, 'formulas':[]}
+            item = {'fr': 0, 'fc': 0, 'lr': 0, 'lc': 0, 'r1c1': r1c1, 'formulas': []}
             # print('r1c1', r1c1)
             for formula in formulas_20000sheets[filesheet][r1c1]:
                 is_add = False
@@ -244,41 +265,45 @@ def devide_training_range_recheck():
                     item['fc'] = formula['column']
                     item['lc'] = formula['column']
                     item['formulas'].append(formula)
-                elif formula['row'] == item['fr'] - 1 and formula['column'] >= item['fc'] and formula['column'] <= item['lc'] :
+                elif formula['row'] == item['fr'] - 1 and formula['column'] >= item['fc'] and formula['column'] <= item[
+                    'lc']:
                     # print('r-1')
                     item['fr'] = formula['row']
                     item['formulas'].append(formula)
-                elif formula['row'] == item['lr'] + 1 and formula['column'] >= item['fc'] and formula['column'] <= item['lc'] :
+                elif formula['row'] == item['lr'] + 1 and formula['column'] >= item['fc'] and formula['column'] <= item[
+                    'lc']:
                     # print('r+1')
                     item['lr'] = formula['row']
                     item['formulas'].append(formula)
-                elif formula['column'] == item['fc'] - 1 and formula['row'] >= item['fr'] and formula['row'] <= item['lr'] :
+                elif formula['column'] == item['fc'] - 1 and formula['row'] >= item['fr'] and formula['row'] <= item[
+                    'lr']:
                     # print('c-1')
                     item['fc'] = formula['column']
                     item['formulas'].append(formula)
-                elif formula['column'] == item['lc'] + 1 and formula['row'] >= item['fr'] and formula['row'] <= item['lr'] :
+                elif formula['column'] == item['lc'] + 1 and formula['row'] >= item['fr'] and formula['row'] <= item[
+                    'lr']:
                     # print('c+1')
                     item['lc'] = formula['column']
                     item['formulas'].append(formula)
                 else:
                     # print('else')
-                    res[id_]=item
+                    res[id_] = item
                     # if not os.path.exists("training_formulas/"+filesheet.split('/')[-1]):
                     #     os.mkdir("training_formulas/"+filesheet.split('/')[-1])
                     # with open("training_formulas/"+filesheet.split('/')[-1]+"/"+str(item['fr'])+'_'+str(item['fc'])+".json",'w') as f:
                     #     json.dump(item, f)
                     is_add = True
-                    item = {'fr': 0, 'fc': 0, 'lr': 0, 'lc': 0, 'r1c1': r1c1, 'formulas':[]}
+                    item = {'fr': 0, 'fc': 0, 'lr': 0, 'lc': 0, 'r1c1': r1c1, 'formulas': []}
                     item['fr'] = formula['row']
                     item['lr'] = formula['row']
                     item['fc'] = formula['column']
                     item['lc'] = formula['column']
                     item['formulas'].append(formula)
                     id_ += 1
-                    
+
             # if len(formulas_20000sheets[filesheet][r1c1]) == 1:
-            if item['fr'] !=0:
-                res[id_]=item
+            if item['fr'] != 0:
+                res[id_] = item
                 # if not os.path.exists("training_formulas/"+filesheet.split('/')[-1]):
                 #     os.mkdir("training_formulas/"+filesheet.split('/')[-1])
                 # with open("training_formulas/"+filesheet.split('/')[-1]+"/"+str(item['fr'])+'_'+str(item['fc'])+".json",'w') as f:
@@ -290,13 +315,13 @@ def devide_training_range_recheck():
     #     json.dump(result, f)
     # with open("origin_middle10domain_mergerange.json",'w') as f:
     #     json.dump(result, f)
-    with open("origin_fortune500_mergerange.json",'w') as f:
+    with open("../data_set/formula_data_set/origin_fortune500_mergerange.json", 'w') as f:
         json.dump(result, f)
 
-def resave_mergerange():
-    with open("Formulas_77772sheets_mergerange_custom.json",'r') as f:
-        formulas_20000sheets = json.load(f)
 
+def resave_mergerange():
+    with open("Formulas_77772sheets_mergerange_custom.json", 'r') as f:
+        formulas_20000sheets = json.load(f)
 
     all_cell = 0
     has_range = 0
@@ -325,17 +350,17 @@ def resave_mergerange():
                 formula['lr'] = formulas_20000sheets[filesheet_name][r1c1][id_]['lr']
                 formula['lc'] = formulas_20000sheets[filesheet_name][r1c1][id_]['lc']
                 # if len(formulas_20000sheets[filesheet_name][r1c1][id_]['formulas']) == 1:
-                    # one_cell += 1
+                # one_cell += 1
                 # if len(formulas_20000sheets[filesheet_name][r1c1][id_]['formulas']) > 1:
-                    # has_range += 1
-                    # lenlist.append(len(formulas_20000sheets[filesheet_name][r1c1][id_]['formulas']))
+                # has_range += 1
+                # lenlist.append(len(formulas_20000sheets[filesheet_name][r1c1][id_]['formulas']))
                 # for item in formulas_20000sheets[filesheet_name][r1c1][id_]['formulas']:
-                    # all_cell += 1
-                    # if len(formulas_20000sheets[filesheet_name][r1c1][id_]['formulas']) > 1:
-                        # has_range_cell += 1
+                # all_cell += 1
+                # if len(formulas_20000sheets[filesheet_name][r1c1][id_]['formulas']) > 1:
+                # has_range_cell += 1
                 res.append(formula)
             # if print_num < 20:
-                
+
             #     print('#######')
             #     print(filesheet_name)
             #     print(r1c1)
@@ -351,17 +376,17 @@ def resave_mergerange():
 
     # print(len(res))
     # print('no_formula', no_formula)
-    with open("Formula_77772.json",'w') as f:
+    with open("Formula_77772.json", 'w') as f:
         json.dump(res, f)
+
 
 def resave_training_mergerange():
     # with open("TrainingFormulas_mergerange_custom_new_res_1.json",'r') as f:
     #     formulas_20000sheets = json.load(f)
     # with open("origin_top10domain_mergerange_new_res_1.json",'r') as f:
     # with open("origin_middle10domain_mergerange_new_res_1.json",'r') as f:
-    with open("origin_fortune500_mergerange_new_res_1.json",'r') as f:
+    with open("../data_set/formula_data_set/origin_fortune500_mergerange_new_res_1.json", 'r') as f:
         formulas_20000sheets = json.load(f)
-
 
     all_cell = 0
     has_range = 0
@@ -396,17 +421,17 @@ def resave_training_mergerange():
                 formula['lc'] = formulas_20000sheets[filesheet_name][r1c1][id_]['lc']
                 formula_id += 1
                 # if len(formulas_20000sheets[filesheet_name][r1c1][id_]['formulas']) == 1:
-                    # one_cell += 1
+                # one_cell += 1
                 # if len(formulas_20000sheets[filesheet_name][r1c1][id_]['formulas']) > 1:
-                    # has_range += 1
-                    # lenlist.append(len(formulas_20000sheets[filesheet_name][r1c1][id_]['formulas']))
+                # has_range += 1
+                # lenlist.append(len(formulas_20000sheets[filesheet_name][r1c1][id_]['formulas']))
                 # for item in formulas_20000sheets[filesheet_name][r1c1][id_]['formulas']:
-                    # all_cell += 1
-                    # if len(formulas_20000sheets[filesheet_name][r1c1][id_]['formulas']) > 1:
-                        # has_range_cell += 1
+                # all_cell += 1
+                # if len(formulas_20000sheets[filesheet_name][r1c1][id_]['formulas']) > 1:
+                # has_range_cell += 1
                 res.append(formula)
             # if print_num < 20:
-                
+
             #     print('#######')
             #     print(filesheet_name)
             #     print(r1c1)
@@ -427,8 +452,10 @@ def resave_training_mergerange():
     # with open("Formulas_top10domain_with_id.json",'w') as f:
     # with open("Formulas_middle10domain_with_id.json",'w') as f:
     #     json.dump(res, f)
-    with open("Formulas_fortune500_with_id.json",'w') as f:
+    with open("../data_set/formula_data_set/Formulas_fortune500_with_id.json", 'w') as f:
         json.dump(res, f)
+
+
 def generate_file_sheet():
     # with open("Formulas_top10domain_with_id.json", 'r') as f:
     # with open("Formulas_middle10domain_with_id.json", 'r') as f:
@@ -448,10 +475,11 @@ def generate_file_sheet():
     # with open("origin_middle10domain_filesheets.json", 'w') as f:
     with open("origin_fortune500_filesheets.json", 'w') as f:
         json.dump(res, f)
-def look_mergerange():
-    with open("Formulas_20000sheets_mergerange_custom.json",'r') as f:
-        formulas_20000sheets = json.load(f)
 
+
+def look_mergerange():
+    with open("Formulas_20000sheets_mergerange_custom.json", 'r') as f:
+        formulas_20000sheets = json.load(f)
 
     all_cell = 0
     has_range = 0
@@ -463,7 +491,7 @@ def look_mergerange():
     for filesheet_name in formulas_20000sheets:
         for r1c1 in formulas_20000sheets[filesheet_name]:
             for id_ in formulas_20000sheets[filesheet_name][r1c1]:
-             
+
                 if len(formulas_20000sheets[filesheet_name][r1c1][id_]['formulas']) == 1:
                     one_cell += 1
                 if len(formulas_20000sheets[filesheet_name][r1c1][id_]['formulas']) > 1:
@@ -474,7 +502,6 @@ def look_mergerange():
                     if len(formulas_20000sheets[filesheet_name][r1c1][id_]['formulas']) > 1:
                         has_range_cell += 1
             if print_num < 20:
-                
                 print('#######')
                 print(filesheet_name)
                 print(r1c1)
@@ -488,7 +515,7 @@ def look_mergerange():
     print('one_cell', one_cell)
 
     all_ = 0
-    with open("Formulas_20000sheets_groupr1c1_custom.json",'r') as f:
+    with open("Formulas_20000sheets_groupr1c1_custom.json", 'r') as f:
         formulas_20000sheets = json.load(f)
     for filesheet in formulas_20000sheets:
         for r1c1 in formulas_20000sheets[filesheet]:
@@ -497,10 +524,11 @@ def look_mergerange():
     print('all_', all_)
     # print(lenlist)
 
+
 def best_sketch_recall():
-    with open("Formulas_20000sheets_mergerange_custom.json",'r') as f:
+    with open("Formulas_20000sheets_mergerange_custom.json", 'r') as f:
         formulas_20000sheets = json.load(f)
-    with open("r1c12template.json",'r') as f:
+    with open("r1c12template.json", 'r') as f:
         r1c12template = json.load(f)
 
     fail = 0
@@ -514,7 +542,7 @@ def best_sketch_recall():
                 continue
             for cand_filesheet_name in formulas_20000sheets:
                 cand_workbookname, cand_sheetname = cand_filesheet_name.split('---')
-                if cand_workbookname==workbookname:
+                if cand_workbookname == workbookname:
                     continue
                 for cand_r1c1 in formulas_20000sheets[cand_filesheet_name]:
                     if cand_r1c1 not in r1c12template:
@@ -527,9 +555,9 @@ def best_sketch_recall():
             if found:
                 can_find_number += len(formulas_20000sheets[filesheet_name][r1c1])
 
+    print('can_find_number', can_find_number)
+    print('fail', fail)
 
-    print('can_find_number', can_find_number)   
-    print('fail', fail)      
 
 def para_sketch_best_recall():
     # process = [
@@ -559,37 +587,38 @@ def para_sketch_best_recall():
 
     need_sketch_look_recall = []
     best_sketch_recall_formula_ids = []
-    for thread_id in range(1,21):
+    for thread_id in range(1, 21):
         print('threa_id', thread_id)
-        with open('need_sketch_look_recall_'+str(thread_id)+'.json','r') as f:
+        with open('need_sketch_look_recall_' + str(thread_id) + '.json', 'r') as f:
             temp1 = json.load(f)
         need_sketch_look_recall += temp1
 
-        with open('best_sketch_recall_formula_ids_'+str(thread_id)+'.json','r') as f:
+        with open('best_sketch_recall_formula_ids_' + str(thread_id) + '.json', 'r') as f:
             temp2 = json.load(f)
         best_sketch_recall_formula_ids += temp2
 
-    with open('need_sketch_look_recall.json','w') as f:
-        json.dump(need_sketch_look_recall,f)
-    with open('best_sketch_recall_formula_ids.json','w') as f:
+    with open('need_sketch_look_recall.json', 'w') as f:
+        json.dump(need_sketch_look_recall, f)
+    with open('best_sketch_recall_formula_ids.json', 'w') as f:
         json.dump(best_sketch_recall_formula_ids, f)
-    
+
+
 def best_sketch_recall_with_sheetsimilarity(thread_id, batch_num):
-    with open('Formulas_middle10domain_with_id.json','r') as f:
+    with open('Formulas_middle10domain_with_id.json', 'r') as f:
         formulas = json.load(f)
     # with open('most_simular_sheet_1900.json', 'r') as f:
     # with open(root_path + 'top10domain_most_simular_sheet.json', 'r') as f:
-        # similar_sheets = json.load(f)
+    # similar_sheets = json.load(f)
     # with open('formula_token_2_template_id_custom.json', 'r') as f:
-        # formula_token_2_template_id = json.load(f)
-    with open('r1c12template_middle10domain.json','r') as f:
+    # formula_token_2_template_id = json.load(f)
+    with open('r1c12template_middle10domain.json', 'r') as f:
         r1c12template_top10domain = json.load(f)
-  
+
     similar_sheets_list = os.listdir(root_path + 'model1_similar_sheet')
-    similar_sheets_list = [i.replace('---1---1.json','') for i in similar_sheets_list]
+    similar_sheets_list = [i.replace('---1---1.json', '') for i in similar_sheets_list]
 
     test_list = os.listdir(root_path + 'model1_middle10domain_formula2afterfeature_test')
-    test_list = [i.replace('.npy','') for i in test_list]
+    test_list = [i.replace('.npy', '') for i in test_list]
 
     # count = 0
     best_recall_formula_ids = []
@@ -597,18 +626,18 @@ def best_sketch_recall_with_sheetsimilarity(thread_id, batch_num):
     need_look_recall = []
 
     best_found_formulas = 0
-    batch_len = len(formulas)/batch_num
+    batch_len = len(formulas) / batch_num
 
     count = 0
-    for index,formula in enumerate(formulas):
+    for index, formula in enumerate(formulas):
         if thread_id != batch_num:
-            if(index <= batch_len * (thread_id - 1 ) or index > batch_len * thread_id):
+            if (index <= batch_len * (thread_id - 1) or index > batch_len * thread_id):
                 continue
         else:
-            if index <= batch_len * (thread_id - 1 ):
+            if index <= batch_len * (thread_id - 1):
                 continue
         print(index, len(formulas))
-        formula_token = formula['filesheet'].split('/')[-1] + '---' + str(formula['fr']) + '---' +  str(formula['fc'])
+        formula_token = formula['filesheet'].split('/')[-1] + '---' + str(formula['fr']) + '---' + str(formula['fc'])
         if formula_token not in test_list:
             continue
         target_r1c1 = formula['r1c1']
@@ -622,15 +651,16 @@ def best_sketch_recall_with_sheetsimilarity(thread_id, batch_num):
         with open(root_path + 'model1_similar_sheet/' + filesheet + '---1---1.json', 'r') as f:
             sheet_feature = json.load(f)
         for similar_sheet_pair in sheet_feature:
-            similar_sheet = similar_sheet_pair[0].replace('---1---1','')
+            similar_sheet = similar_sheet_pair[0].replace('---1---1', '')
             if similar_sheet == filesheet:
                 continue
-           
+
             for other_formula in formulas:
                 # print("other_formula['filesheet'].split('/')[-1]", other_formula['filesheet'].split('/')[-1])
                 # print('similar_sheet', similar_sheet)
                 if other_formula['filesheet'].split('/')[-1] == similar_sheet:
-                    other_formula_token = similar_sheet + '---' + str(other_formula['fr']) + '---' + str(other_formula['fc'])
+                    other_formula_token = similar_sheet + '---' + str(other_formula['fr']) + '---' + str(
+                        other_formula['fc'])
                     res_r1c1 = other_formula['r1c1']
                     print('other_formula_token', other_formula_token)
                     if target_r1c1 not in r1c12template_top10domain:
@@ -643,7 +673,8 @@ def best_sketch_recall_with_sheetsimilarity(thread_id, batch_num):
                         res_tid = r1c12template_top10domain[res_r1c1]
                     if target_tid == res_tid:
                         best_found = True
-                        if other_formula['fr'] <= formula['fr'] + 5 and other_formula['fr'] >= formula['fr'] - 5 and  other_formula['fc'] <= formula['fc'] + 5 and other_formula['fc'] >= formula['fc'] - 5:
+                        if other_formula['fr'] <= formula['fr'] + 5 and other_formula['fr'] >= formula['fr'] - 5 and \
+                                other_formula['fc'] <= formula['fc'] + 5 and other_formula['fc'] >= formula['fc'] - 5:
                             found = True
                             # print('found')
                             # print('formula', formula)
@@ -652,7 +683,7 @@ def best_sketch_recall_with_sheetsimilarity(thread_id, batch_num):
                             break
                         else:
                             need_look_recall.append([formula, other_formula])
-                        
+
             if found:
                 break
         if found:
@@ -660,8 +691,8 @@ def best_sketch_recall_with_sheetsimilarity(thread_id, batch_num):
         if best_found:
             best_found_formulas += 1
         print('best found', best_found)
-    print('sketch +-5 recall', found_formulas/count)
-    print('sketch best recall', best_found_formulas/count)
+    print('sketch +-5 recall', found_formulas / count)
+    print('sketch best recall', best_found_formulas / count)
     # print('found_formulas', found_formulas)
     # print('best_found_formulas', best_found_formulas)
     # with open("need_sketch_look_recall_"+str(thread_id)+".json", 'w') as f:
@@ -669,23 +700,24 @@ def best_sketch_recall_with_sheetsimilarity(thread_id, batch_num):
     # with open("best_sketch_recall_formula_ids_"+str(thread_id)+".json", 'w') as f:
     #     json.dump(best_recall_formula_ids, f)
 
+
 def best_hasfunc_recall_with_sheetsimilarity():
-    with open('Formula_hasfunc_with_id.json','r') as f:
+    with open('Formula_hasfunc_with_id.json', 'r') as f:
         formulas = json.load(f)
     with open('most_simular_sheet_1900.json', 'r') as f:
         similar_sheets = json.load(f)
     with open('formula_token_2_template_id_custom.json', 'r') as f:
         formula_token_2_template_id = json.load(f)
-  
+
     # count = 0
     best_recall_formula_ids = []
     found_formulas = 0
     need_look_recall = []
 
     best_found_formulas = 0
-    for index,formula in enumerate(formulas):
+    for index, formula in enumerate(formulas):
         print(index, len(formulas))
-        formula_token = formula['filesheet'].split('/')[5] + '---' + str(formula['fr']) + '---' +  str(formula['fc'])
+        formula_token = formula['filesheet'].split('/')[5] + '---' + str(formula['fr']) + '---' + str(formula['fc'])
         filesheet = formula['filesheet'].split('/')[5]
         found = False
         best_found = False
@@ -693,13 +725,15 @@ def best_hasfunc_recall_with_sheetsimilarity():
             similar_sheet = similar_sheet_pair[0]
             if similar_sheet == filesheet:
                 continue
-           
+
             for other_formula in formulas:
                 if other_formula['filesheet'].split('/')[-1] == similar_sheet:
-                    other_formula_token = similar_sheet + '---' + str(other_formula['fr']) + '---' + str(other_formula['fc'])
+                    other_formula_token = similar_sheet + '---' + str(other_formula['fr']) + '---' + str(
+                        other_formula['fc'])
                     if formula['r1c1'] == other_formula['r1c1']:
                         best_found = True
-                        if other_formula['fr'] <= formula['fr'] + 5 and other_formula['fr'] >= formula['fr'] - 5 and  other_formula['fc'] <= formula['fc'] + 5 and other_formula['fc'] >= formula['fc'] - 5:
+                        if other_formula['fr'] <= formula['fr'] + 5 and other_formula['fr'] >= formula['fr'] - 5 and \
+                                other_formula['fc'] <= formula['fc'] + 5 and other_formula['fc'] >= formula['fc'] - 5:
                             found = True
                             print('found')
                             print('formula', formula)
@@ -708,33 +742,35 @@ def best_hasfunc_recall_with_sheetsimilarity():
                             break
                         else:
                             need_look_recall.append([formula, other_formula])
-                        
+
             if found:
                 break
         if found:
             found_formulas += 1
         if best_found:
             best_found_formulas += 1
-    print(' +-5 recall', found_formulas/len(formulas))
-    print('best recall', best_found_formulas/len(formulas))
+    print(' +-5 recall', found_formulas / len(formulas))
+    print('best recall', best_found_formulas / len(formulas))
     with open("need_hasfunc_look_recall.json", 'w') as f:
         json.dump(need_look_recall, f)
     with open("best_hasfunc_recall_formula_ids.json", 'w') as f:
         json.dump(best_recall_formula_ids, f)
 
+
 def generate_faild_case():
     with open("best_recall_formula_ids.json", 'r') as f:
         best_recall_formula_ids = json.load(f)
     test_fail = []
-    for thread_id in range(1,21):
-        with open("only_not_found_res_"+str(thread_id)+".json",'r') as f:
+    for thread_id in range(1, 21):
+        with open("only_not_found_res_" + str(thread_id) + ".json", 'r') as f:
             temp = json.load(f)
             test_fail += temp
     failed_case = list(set(test_fail) & set(best_recall_formula_ids))
     print(len(failed_case))
     with open('failed_case.json', 'w') as f:
         json.dump(failed_case, f)
-    
+
+
 def look_failed_case(thread_id, count_id):
     with open('failed_case.json', 'r') as f:
         failed_case = json.load(f)
@@ -742,10 +778,10 @@ def look_failed_case(thread_id, count_id):
         formula_token_2_template_id = json.load(f)
     with open('formula_token_2_r1c1.json', 'r') as f:
         formula_token_2_r1c1 = json.load(f)
-    with open('Formula_77772_with_id.json','r') as f:
+    with open('Formula_77772_with_id.json', 'r') as f:
         formulas = json.load(f)
 
-    res = np.load("deal00_most_similar_formula_1900_"+str(thread_id)+".npy", allow_pickle=True).item()
+    res = np.load("deal00_most_similar_formula_1900_" + str(thread_id) + ".npy", allow_pickle=True).item()
     found_res = []
     not_found_res = []
     count = 0
@@ -753,7 +789,7 @@ def look_failed_case(thread_id, count_id):
 
     all_fail = 0
     same_template = 0
-    for index,formula in enumerate(formulas):
+    for index, formula in enumerate(formulas):
         if formula['id'] not in failed_case:
             continue
         all_fail += 1
@@ -763,12 +799,12 @@ def look_failed_case(thread_id, count_id):
             continue
         res_list = sorted(res[formula_token].items(), key=lambda x: x[1], reverse=True)[0]
         top1_formula_token = res_list[0]
-        
+
         if formula_token not in formula_token_2_template_id:
             template_id_1 = -1
         else:
             template_id_1 = formula_token_2_template_id[formula_token]
-        
+
         if top1_formula_token not in formula_token_2_template_id:
             template_id_2 = -1
         else:
@@ -776,7 +812,7 @@ def look_failed_case(thread_id, count_id):
         if template_id_1 == template_id_2:
             same_template += 1
         # print(template_id_1, template_id_2)
-    
+
         if res_list[1] < 0.7 or res_list[1] > 0.8:
             continue
         count += 1
@@ -792,31 +828,31 @@ def look_failed_case(thread_id, count_id):
             res_list = sorted(res[formula_token].items(), key=lambda x: x[1], reverse=True)[0:20]
             # print(feature)
             for item in res_list:
-                print(item,formula_token_2_r1c1[item[0]])
+                print(item, formula_token_2_r1c1[item[0]])
                 # print()
                 # if os.path.exists('deal00formula2afterbertfeature/'+item[0] + '.npy'):
                 #     other_feature = np.load('deal00formula2afterbertfeature/'+item[0] + '.npy', allow_pickle=True)
                 # else:
                 #     other_feature = np.load('formula2afterbertfeature/'+item[0] + '.npy', allow_pickle=True)
-    
+
                 # print((feature==other_feature).all())
                 # print(other_feature)
                 # before_feature = other_feature
-            
+
             break
     # return count
     return all_fail, same_template, count
 
+
 def count_model_bad():
     with open('failed_case.json', 'r') as f:
-        failed_case = json.load(f) # r1c1可能不同，template相同
+        failed_case = json.load(f)  # r1c1可能不同，template相同
     with open('formula_token_2_template_id.json', 'r') as f:
         formula_token_2_template_id = json.load(f)
     with open('formula_token_2_r1c1.json', 'r') as f:
         formula_token_2_r1c1 = json.load(f)
-    with open('Formula_77772_with_id.json','r') as f:
+    with open('Formula_77772_with_id.json', 'r') as f:
         formulas = json.load(f)
-
 
     count = 0
     all_fail = 0
@@ -826,29 +862,30 @@ def count_model_bad():
     found_same_position = 0
     found_not_same_position = 0
     not_found = 0
-    
+
     r1c1_fail = 0
     template_fail = 0
     for thread_id in range(1, 21):
         print(thread_id, 20)
-        res = np.load("deal00_most_similar_formula_1900_"+str(thread_id)+".npy", allow_pickle=True).item()
-        for index,formula in enumerate(formulas):
+        res = np.load("deal00_most_similar_formula_1900_" + str(thread_id) + ".npy", allow_pickle=True).item()
+        for index, formula in enumerate(formulas):
             if formula['id'] not in failed_case:
                 continue
             all_fail += 1
-            formula_token = formula['filesheet'].split('/')[-1] + '---' + str(formula['fr']) + '---' + str(formula['fc'])
+            formula_token = formula['filesheet'].split('/')[-1] + '---' + str(formula['fr']) + '---' + str(
+                formula['fc'])
             r1c1 = formula['r1c1']
             if formula_token not in res:
                 continue
             r1c1_fail += 1
             res_list = sorted(res[formula_token].items(), key=lambda x: x[1], reverse=True)[0]
             top1_formula_token = res_list[0]
-            
+
             if formula_token not in formula_token_2_template_id:
                 template_id_1 = -1
             else:
                 template_id_1 = formula_token_2_template_id[formula_token]
-            
+
             if top1_formula_token not in formula_token_2_template_id:
                 template_id_2 = -1
             else:
@@ -885,10 +922,10 @@ def count_model_bad():
     print('r1c1_fail', r1c1_fail)
     return all_fail, same_template, count
 
-def best_recall():
-    with open("Formulas_20000sheets_mergerange_custom.json",'r') as f:
-        formulas_20000sheets = json.load(f)
 
+def best_recall():
+    with open("Formulas_20000sheets_mergerange_custom.json", 'r') as f:
+        formulas_20000sheets = json.load(f)
 
     all_cell = 0
     has_range = 0
@@ -905,7 +942,7 @@ def best_recall():
             found = False
             for cand_filesheet_name in formulas_20000sheets:
                 cand_workbookname, cand_sheetname = cand_filesheet_name.split('---')
-                if cand_workbookname==workbookname:
+                if cand_workbookname == workbookname:
                     continue
                 for cand_r1c1 in formulas_20000sheets[cand_filesheet_name]:
                     if cand_r1c1 == r1c1:
@@ -916,16 +953,16 @@ def best_recall():
             if found:
                 can_find_number += len(formulas_20000sheets[filesheet_name][r1c1])
 
+    print('can_find_number', can_find_number)
 
-    print('can_find_number', can_find_number)         
 
 def batch_anaylze_range():
     batch_origin_data = []
     # with open("../AnalyzeDV/Formulas_20000sheets_recheck.json",'r') as f:
 
     # batch_origin_data.append(formulas_20000sheets)
-    for index in range(1,58):
-        with open("../AnalyzeDV/origin_top10domain/origin_top10domain_formulas_"+str(index)+".json",'r') as f:
+    for index in range(1, 58):
+        with open("../AnalyzeDV/origin_top10domain/origin_top10domain_formulas_" + str(index) + ".json", 'r') as f:
             formulas_20000sheets = json.load(f)
         batch_origin_data.append(formulas_20000sheets)
     new_res = {}
@@ -942,13 +979,14 @@ def batch_anaylze_range():
                 new_res[filesheet_name][formula['formulaR1C1']].append(formu)
 
     # with open("Formulas_20000sheets_groupr1c1_check.json",'w') as f:
-    with open("origin_top10domain_formulas_groupr1c1.json",'w') as f:
+    with open("origin_top10domain_formulas_groupr1c1.json", 'w') as f:
         json.dump(new_res, f)
 
+
 def anaylze_range():
-    with open("../AnalyzeDV/Formulas_20000sheets_custom.json",'r') as f:
+    with open("../AnalyzeDV/Formulas_20000sheets_custom.json", 'r') as f:
         formulas_20000sheets = json.load(f)
-    
+
     new_res = {}
     for filesheet_name in list(formulas_20000sheets.keys()):
         new_res[filesheet_name] = {}
@@ -962,79 +1000,83 @@ def anaylze_range():
             formu['formulaR1C1'] = formula['formulaR1C1']
             new_res[filesheet_name][formula['formulaR1C1']].append(formu)
 
-    with open("Formulas_20000sheets_groupr1c1_custom.json",'w') as f:
+    with open("Formulas_20000sheets_groupr1c1_custom.json", 'w') as f:
         json.dump(new_res, f)
+
 
 def anaylze_training_range():
     new_res = {}
     # for save_id in range(1,7):
-    for save_id in range(58,98):
-        print(save_id, 98)
-        # with open("../AnalyzeDV/TrainingFormulas_"+str(save_id)+".json",'r') as f:
-        #     training_formulas = json.load(f)
-        # with open("../AnalyzeDV/origin_top10domain/origin_top10domain_formulas_"+str(save_id)+".json",'r') as f:
-        #     training_formulas = json.load(f)
-        # with open("../AnalyzeDV/origin_middle10domain/origin_middle10domain_formulas_"+str(save_id)+".json",'r') as f:
-        #     training_formulas = json.load(f)
-        with open("../AnalyzeDV/origin_fortune500/origin_fortune500_formulas_"+str(save_id)+".json",'r') as f:
-            training_formulas = json.load(f)
+    # for save_id in range(58, 98):
+    # print(save_id, 98)
+    # with open("../AnalyzeDV/TrainingFormulas_"+str(save_id)+".json",'r') as f:
+    #     training_formulas = json.load(f)
+    # with open("../AnalyzeDV/origin_top10domain/origin_top10domain_formulas_"+str(save_id)+".json",'r') as f:
+    #     training_formulas = json.load(f)
+    # with open("../AnalyzeDV/origin_middle10domain/origin_middle10domain_formulas_"+str(save_id)+".json",'r') as f:
+    #     training_formulas = json.load(f)
+    with open("../data_set/formula_data_set/origin_data_formulas_" + str(58) + ".json", 'r') as f:
+        training_formulas = json.load(f)
 
-        for filesheet_name in list(training_formulas.keys()):
-            new_res[filesheet_name] = {}
-            for formula in training_formulas[filesheet_name]:
-                if formula['formulaR1C1'] not in new_res[filesheet_name]:
-                    new_res[filesheet_name][formula['formulaR1C1']] = []
-                formu = {}
-                formu['column'] = formula['column']
-                formu['row'] = formula['row']
-                new_res[filesheet_name][formula['formulaR1C1']].append(formu)
-        print(len(new_res))
-        if save_id % 10 == 0:
-            with open("origin_fortune500_groupby_r1c1.json",'w') as f:
-                json.dump(new_res, f)
+    for filesheet_name in list(training_formulas.keys()):
+        new_res[filesheet_name] = {}
+        for formula in training_formulas[filesheet_name]:
+            if formula['formulaR1C1'] not in new_res[filesheet_name]:
+                new_res[filesheet_name][formula['formulaR1C1']] = []
+            formu = {}
+            formu['column'] = formula['column']
+            formu['row'] = formula['row']
+            new_res[filesheet_name][formula['formulaR1C1']].append(formu)
+    print(len(new_res))
+    # if save_id % 10 == 0:
+    #     with open("origin_fortune500_groupby_r1c1.json", 'w') as f:
+    #         json.dump(new_res, f)
 
-    with open("origin_fortune500_groupby_r1c1.json",'w') as f:
+    with open("../data_set/formula_data_set/origin_fortune500_groupby_r1c1.json", 'w') as f:
         json.dump(new_res, f)
 
 
 def save_all_r1c1():
-    with open("Formulas_77772sheets_mergerange_custom.json",'r') as f:
+    with open("Formulas_77772sheets_mergerange_custom.json", 'r') as f:
         formulas_20000sheets = json.load(f)
     res = []
     for filename in formulas_20000sheets:
         res += list(formulas_20000sheets[filename].keys())
-    with open("Formulas_77772r1c1_custom.json",'w') as f:
+    with open("Formulas_77772r1c1_custom.json", 'w') as f:
         json.dump(list(set(res)), f)
+
 
 def save_training_r1c1():
     # with open("origin_middle10domain_mergerange_new_res_1.json",'r') as f:
     #     formulas_20000sheets = json.load(f)
-    with open("origin_fortune500_mergerange_new_res_1.json",'r') as f:
+    with open("origin_fortune500_mergerange_new_res_1.json", 'r') as f:
         formulas_20000sheets = json.load(f)
     res = []
     for filename in formulas_20000sheets:
         res += list(formulas_20000sheets[filename].keys())
     # with open("middle10domain_formulas_list.json",'w') as f:
     #     json.dump(list(set(res)), f)
-    with open("fortune500_formulas_list.json",'w') as f:
+    with open("fortune500_formulas_list.json", 'w') as f:
         json.dump(list(set(res)), f)
 
+
 def count_all_r1c1():
-    with open("Formulas_20000r1c1_custom.json",'r') as f:
+    with open("Formulas_20000r1c1_custom.json", 'r') as f:
         res = json.load(f)
     print(len(res))
 
+
 def look_sketch_all_sheetname_2_num():
-    with open("Formulas_20000sheets_mergerange_custom.json",'r') as f:
+    with open("Formulas_20000sheets_mergerange_custom.json", 'r') as f:
         formulas_20000sheets = json.load(f)
 
-    with open("../AnalyzeDV/boundary_sheetname_2_file_devided_1.json",'r') as f:
+    with open("../AnalyzeDV/boundary_sheetname_2_file_devided_1.json", 'r') as f:
         boundary_sheetname_2_num = json.load(f)
 
-    with open("../AnalyzeDV/custom_sheetname_2_file_devided_1.json",'r') as f:
+    with open("../AnalyzeDV/custom_sheetname_2_file_devided_1.json", 'r') as f:
         custom_sheetname_2_num = json.load(f)
 
-    with open("r1c12template.json",'r') as f:
+    with open("r1c12template.json", 'r') as f:
         r1c12template = json.load(f)
     # print(list(all_sheetname_2_num.keys()))
     # print(custom_sheetname_2_num['Input'])
@@ -1044,13 +1086,13 @@ def look_sketch_all_sheetname_2_num():
     # files = set(formulas_20000sheets.keys())
     count = 0
 
-    has_num =0
+    has_num = 0
     f_has_num = 0
     printed_file = []
     for filename in formulas_20000sheets:
-        
+
         # if count >=10:
-            # break
+        # break
         workbookname, sheetname = filename.split('---')
         if sheetname not in custom_sheetname_2_num:
             # print('xxxxxxxx')
@@ -1068,8 +1110,8 @@ def look_sketch_all_sheetname_2_num():
             for filenamelist in custom_sheetname_2_num[sheetname]:
                 if workbookname in filenamelist:
                     # if filename == '../../data/UnzipData/002/1346696a6af6d6c2fca67068b13bd935_d3d3LmFlci5nb3YuYXUJMTUyLjkxLjUzLjE5Mw==.xls.xlsx---Input':
-                        # print('workbookname', workbookname)
-                        # print('filenamelist', filenamelist)
+                    # print('workbookname', workbookname)
+                    # print('filenamelist', filenamelist)
                     cand_files = set(filenamelist) & files - set([workbookname])
                     break
             # print('workbookname', set([workbookname]))
@@ -1078,7 +1120,7 @@ def look_sketch_all_sheetname_2_num():
         if len(cand_files) > 0:
             for r1c1 in formulas_20000sheets[filename]:
                 has_num += len(formulas_20000sheets[filename][r1c1])
-                found=False
+                found = False
                 if r1c1 not in r1c12template:
                     continue
                 for wbname in cand_files:
@@ -1109,14 +1151,15 @@ def look_sketch_all_sheetname_2_num():
     print(has_num)
     print(f_has_num)
 
+
 def look_all_sheetname_2_num():
-    with open("Formulas_20000sheets_mergerange_custom.json",'r') as f:
+    with open("Formulas_20000sheets_mergerange_custom.json", 'r') as f:
         formulas_20000sheets = json.load(f)
 
-    with open("../AnalyzeDV/boundary_sheetname_2_file_devided_1.json",'r') as f:
+    with open("../AnalyzeDV/boundary_sheetname_2_file_devided_1.json", 'r') as f:
         boundary_sheetname_2_num = json.load(f)
 
-    with open("../AnalyzeDV/custom_sheetname_2_file_devided_1.json",'r') as f:
+    with open("../AnalyzeDV/custom_sheetname_2_file_devided_1.json", 'r') as f:
         custom_sheetname_2_num = json.load(f)
     # print(list(all_sheetname_2_num.keys()))
 
@@ -1126,26 +1169,26 @@ def look_all_sheetname_2_num():
     # files = set(formulas_20000sheets.keys())
     count = 0
 
-    has_num =0
+    has_num = 0
     f_has_num = 0
 
     inboundarynum = 0
     for filename in formulas_20000sheets:
-        
+
         # if count >=10:
-            # break
+        # break
         workbookname, sheetname = filename.split('---')
         if sheetname not in custom_sheetname_2_num:
             inboundarynum += 1
             print('xxxxxxxx')
-            print('cand_files+workbookname',set(boundary_sheetname_2_num[sheetname][0]) & files)
+            print('cand_files+workbookname', set(boundary_sheetname_2_num[sheetname][0]) & files)
             cand_files = set(boundary_sheetname_2_num[sheetname][0]['filenames']) & files - set([workbookname])
             print('workbookname', set([workbookname]))
             print('cand_files', cand_files)
         else:
 
             print('xxssssssxxxxxx')
-            print('cand_files+workbookname',set(custom_sheetname_2_num[sheetname][0]) & files)
+            print('cand_files+workbookname', set(custom_sheetname_2_num[sheetname][0]) & files)
             # cand_files = set(custom_sheetname_2_num[sheetname][0]) & files - set([workbookname])
             for filenamelist in custom_sheetname_2_num[sheetname]:
                 if workbookname in filenamelist:
@@ -1159,7 +1202,7 @@ def look_all_sheetname_2_num():
         if len(cand_files) > 0:
             for r1c1 in formulas_20000sheets[filename]:
                 has_num += len(formulas_20000sheets[filename][r1c1])
-                found=False
+                found = False
                 for wbname in cand_files:
                     for fsname in formulas_20000sheets:
                         if wbname in fsname:
@@ -1177,25 +1220,27 @@ def look_all_sheetname_2_num():
 
     print(inboundarynum)
 
+
 def download_sampled_file():
-    with open('../AnalyzeDV/sampled_file.json','r') as f:
+    with open('../AnalyzeDV/sampled_file.json', 'r') as f:
         sampled_file = json.load(f)
     for filename in sampled_file:
-        filename = filename.replace("/UnzipData","").split('---')[0]
+        filename = filename.replace("/UnzipData", "").split('---')[0]
         print(filename)
         splits = filename.split('/')
-        if not os.path.exists('/datadrive/data/sampled_sheets/'+splits[3]):
-            os.mkdir('/datadrive/data/sampled_sheets/'+splits[3])
-        os.system('cp '+filename+' /datadrive/data/sampled_sheets/'+splits[3]+'/'+splits[4])
+        if not os.path.exists('/datadrive/data/sampled_sheets/' + splits[3]):
+            os.mkdir('/datadrive/data/sampled_sheets/' + splits[3])
+        os.system('cp ' + filename + ' /datadrive/data/sampled_sheets/' + splits[3] + '/' + splits[4])
+
 
 def template_analyze():
-    with open("Formula_77772_with_id.json",'r') as f:
+    with open("Formula_77772_with_id.json", 'r') as f:
         formulas = json.load(f)
 
     # with open('formula_r1c1_template_custom.json','r') as f:
     #     formula_r1c1_template = json.load(f)
 
-    with open('r1c12template_custom.json','r') as f:
+    with open('r1c12template_custom.json', 'r') as f:
         r1c12template = json.load(f)
 
     template2num = {}
@@ -1204,7 +1249,7 @@ def template_analyze():
     formula_token_2_r1c1 = {}
     # print(r1c12template.keys())
     for formula in formulas:
-        formula_token = formula['filesheet'].split('/')[-1]+'---' + str(formula['fr']) + '---' + str(formula['fc'])
+        formula_token = formula['filesheet'].split('/')[-1] + '---' + str(formula['fr']) + '---' + str(formula['fc'])
         formula_token_2_r1c1[formula_token] = formula['r1c1']
         if formula['r1c1'] not in r1c12template:
             formula_token_2_template_id[formula_token] = -1
@@ -1213,8 +1258,8 @@ def template_analyze():
             template2num[r1c12template[formula['r1c1']]] = 0
         template2num[r1c12template[formula['r1c1']]] += 1
         formula_token_2_template_id[formula_token] = r1c12template[formula['r1c1']]
-    template2num = sorted(template2num.items(), key=lambda x:x[1], reverse=True)
-    with open('template2num.json','w') as f:
+    template2num = sorted(template2num.items(), key=lambda x: x[1], reverse=True)
+    with open('template2num.json', 'w') as f:
         json.dump(template2num, f)
     # pprint.pprint(template2num)
     # res = []
@@ -1231,12 +1276,14 @@ def template_analyze():
     #     json.dump(formula_token_2_template_id, f)
     # with open('formula_token_2_r1c1_custom.json','w') as f:
     #     json.dump(formula_token_2_r1c1, f)
+
+
 def check_formula():
     # with open("Formulas_20000sheets_mergerange_custom.json", 'r') as f:
     #     res = json.load(f)
     with open("origin_top10domain_mergerange.json", 'r') as f:
         res = json.load(f)
-    
+
     multi_res = {}
     index = 0
     for filesheet in res:
@@ -1250,8 +1297,13 @@ def check_formula():
             for batch_id in res[filesheet][r1c1]:
                 found = False
                 for item in new_res:
-                    if res[filesheet][r1c1][batch_id]['fc'] <= new_res[item]['lc'] and res[filesheet][r1c1][batch_id]['fc'] >= new_res[item]['fc'] and res[filesheet][r1c1][batch_id]['fr'] <= new_res[item]['lr'] and res[filesheet][r1c1][batch_id]['fr'] >= new_res[item]['fr'] and \
-                       res[filesheet][r1c1][batch_id]['lc'] <= new_res[item]['lc'] and res[filesheet][r1c1][batch_id]['lc'] >= new_res[item]['fc'] and res[filesheet][r1c1][batch_id]['lr'] <= new_res[item]['lr'] and res[filesheet][r1c1][batch_id]['lr'] >= new_res[item]['fr']:
+                    if res[filesheet][r1c1][batch_id]['fc'] <= new_res[item]['lc'] and res[filesheet][r1c1][batch_id][
+                        'fc'] >= new_res[item]['fc'] and res[filesheet][r1c1][batch_id]['fr'] <= new_res[item]['lr'] and \
+                            res[filesheet][r1c1][batch_id]['fr'] >= new_res[item]['fr'] and \
+                            res[filesheet][r1c1][batch_id]['lc'] <= new_res[item]['lc'] and \
+                            res[filesheet][r1c1][batch_id]['lc'] >= new_res[item]['fc'] and \
+                            res[filesheet][r1c1][batch_id]['lr'] <= new_res[item]['lr'] and \
+                            res[filesheet][r1c1][batch_id]['lr'] >= new_res[item]['fr']:
                         found = True
                 if found:
                     continue
@@ -1266,8 +1318,10 @@ def check_formula():
                 for another_batch_id in res[filesheet][r1c1]:
                     if batch_id == another_batch_id:
                         continue
-                    if res[filesheet][r1c1][batch_id]['fc'] == res[filesheet][r1c1][another_batch_id]['fc'] and res[filesheet][r1c1][batch_id]['lc'] == res[filesheet][r1c1][another_batch_id]['lc'] and res[filesheet][r1c1][another_batch_id]['fr'] == res[filesheet][r1c1][batch_id]['lr'] + 1:
-                        res[filesheet][r1c1][batch_id]['lr'] = res[filesheet][r1c1][another_batch_id]['lr'] 
+                    if res[filesheet][r1c1][batch_id]['fc'] == res[filesheet][r1c1][another_batch_id]['fc'] and \
+                            res[filesheet][r1c1][batch_id]['lc'] == res[filesheet][r1c1][another_batch_id]['lc'] and \
+                            res[filesheet][r1c1][another_batch_id]['fr'] == res[filesheet][r1c1][batch_id]['lr'] + 1:
+                        res[filesheet][r1c1][batch_id]['lr'] = res[filesheet][r1c1][another_batch_id]['lr']
                         # print("    ##########")
                         # print('    fc', res[filesheet][r1c1][batch_id]['fc'])
                         # print('    fr',res[filesheet][r1c1][batch_id]['fr'])
@@ -1282,18 +1336,19 @@ def check_formula():
                 multi_res[filesheet][r1c1][batch_id]['lc'] = new_res[batch_id]['lc']
                 multi_res[filesheet][r1c1][batch_id]['lr'] = new_res[batch_id]['lr']
             # print('new_res', new_res)
-                # pprint.pprint(res[filesheet][r1c1][batch_id])
+            # pprint.pprint(res[filesheet][r1c1][batch_id])
     # with open("Formulas_20000sheets_mergerange_custom_new_res_1.json", 'w') as f:
     #     json.dump(multi_res, f)
     with open("orgin_top10domain_mergerange_new_res_1.json", 'w') as f:
         json.dump(multi_res, f)
+
 
 def check_training_formula():
     # with open("TrainingFormulas_mergerange_custom.json", 'r') as f:
     #     res = json.load(f)
     # with open("origin_top10domain_mergerange.json", 'r') as f:
     # with open("origin_middle10domain_mergerange.json", 'r') as f:
-    with open("origin_fortune500_mergerange.json", 'r') as f:
+    with open("../data_set/formula_data_set/origin_fortune500_mergerange.json", 'r') as f:
         res = json.load(f)
 
     multi_res = {}
@@ -1309,8 +1364,13 @@ def check_training_formula():
             for batch_id in res[filesheet][r1c1]:
                 found = False
                 for item in new_res:
-                    if res[filesheet][r1c1][batch_id]['fc'] <= new_res[item]['lc'] and res[filesheet][r1c1][batch_id]['fc'] >= new_res[item]['fc'] and res[filesheet][r1c1][batch_id]['fr'] <= new_res[item]['lr'] and res[filesheet][r1c1][batch_id]['fr'] >= new_res[item]['fr'] and \
-                       res[filesheet][r1c1][batch_id]['lc'] <= new_res[item]['lc'] and res[filesheet][r1c1][batch_id]['lc'] >= new_res[item]['fc'] and res[filesheet][r1c1][batch_id]['lr'] <= new_res[item]['lr'] and res[filesheet][r1c1][batch_id]['lr'] >= new_res[item]['fr']:
+                    if res[filesheet][r1c1][batch_id]['fc'] <= new_res[item]['lc'] and res[filesheet][r1c1][batch_id][
+                        'fc'] >= new_res[item]['fc'] and res[filesheet][r1c1][batch_id]['fr'] <= new_res[item]['lr'] and \
+                            res[filesheet][r1c1][batch_id]['fr'] >= new_res[item]['fr'] and \
+                            res[filesheet][r1c1][batch_id]['lc'] <= new_res[item]['lc'] and \
+                            res[filesheet][r1c1][batch_id]['lc'] >= new_res[item]['fc'] and \
+                            res[filesheet][r1c1][batch_id]['lr'] <= new_res[item]['lr'] and \
+                            res[filesheet][r1c1][batch_id]['lr'] >= new_res[item]['fr']:
                         found = True
                 if found:
                     continue
@@ -1325,8 +1385,10 @@ def check_training_formula():
                 for another_batch_id in res[filesheet][r1c1]:
                     if batch_id == another_batch_id:
                         continue
-                    if res[filesheet][r1c1][batch_id]['fc'] == res[filesheet][r1c1][another_batch_id]['fc'] and res[filesheet][r1c1][batch_id]['lc'] == res[filesheet][r1c1][another_batch_id]['lc'] and res[filesheet][r1c1][another_batch_id]['fr'] == res[filesheet][r1c1][batch_id]['lr'] + 1:
-                        res[filesheet][r1c1][batch_id]['lr'] = res[filesheet][r1c1][another_batch_id]['lr'] 
+                    if res[filesheet][r1c1][batch_id]['fc'] == res[filesheet][r1c1][another_batch_id]['fc'] and \
+                            res[filesheet][r1c1][batch_id]['lc'] == res[filesheet][r1c1][another_batch_id]['lc'] and \
+                            res[filesheet][r1c1][another_batch_id]['fr'] == res[filesheet][r1c1][batch_id]['lr'] + 1:
+                        res[filesheet][r1c1][batch_id]['lr'] = res[filesheet][r1c1][another_batch_id]['lr']
                         # print("    ##########")
                         # print('    fc', res[filesheet][r1c1][batch_id]['fc'])
                         # print('    fr',res[filesheet][r1c1][batch_id]['fr'])
@@ -1341,12 +1403,12 @@ def check_training_formula():
                 multi_res[filesheet][r1c1][batch_id]['lc'] = new_res[batch_id]['lc']
                 multi_res[filesheet][r1c1][batch_id]['lr'] = new_res[batch_id]['lr']
             # print('new_res', new_res)
-                # pprint.pprint(res[filesheet][r1c1][batch_id])
+            # pprint.pprint(res[filesheet][r1c1][batch_id])
     # with open("TrainingFormulas_mergerange_custom_new_res_1.json", 'w') as f:
     #     json.dump(multi_res, f)
     # with open("origin_top10domain_mergerange_new_res_1.json", 'w') as f:
     # with open("origin_middle10domain_mergerange_new_res_1.json", 'w') as f:
-    with open("origin_fortune500_mergerange_new_res_1.json", 'w') as f:
+    with open("../data_set/formula_data_set/origin_fortune500_mergerange_new_res_1.json", 'w') as f:
         json.dump(multi_res, f)
 
 
@@ -1355,9 +1417,8 @@ def count_formula():
     #     res = json.load(f)
     # with open("origin_top10domain_mergerange_new_res_1.json", 'r') as f:
     # with open("origin_middle10domain_mergerange_new_res_1.json", 'r') as f:
-    with open("origin_fortune500_mergerange_new_res_1.json", 'r') as f:
+    with open("../data_set/formula_data_set/origin_fortune500_mergerange_new_res_1.json", 'r') as f:
         res = json.load(f)
-    
 
     count = 0
 
@@ -1374,6 +1435,7 @@ def count_formula():
     # print(c)
     print(count)
 
+
 def mv_small_count_formula_features():
     with open("Formulas_20000sheets_mergerange_custom_new_res_1.json", 'r') as f:
         res = json.load(f)
@@ -1381,12 +1443,17 @@ def mv_small_count_formula_features():
     for filesheet in res:
         for r1c1 in res[filesheet]:
             for batch_id in res[filesheet][r1c1]:
-                print('cp ../AnalyzeDV/FormulaFeatures/'+filesheet.split('---')[0].split('/')[5]+'---'+filesheet.split('---')[1]+'---'+str(res[filesheet][r1c1][batch_id]['fr'])+"---"+str(res[filesheet][r1c1][batch_id]['fc'])+'.json ../AnalyzeDV/FormulaFeatures77772/')
-                os.system('cp ../AnalyzeDV/FormulaFeatures/'+filesheet.split('---')[0].split('/')[5]+'---'+filesheet.split('---')[1]+'---'+str(res[filesheet][r1c1][batch_id]['fr'])+"---"+str(res[filesheet][r1c1][batch_id]['fc'])+'.json ../AnalyzeDV/FormulaFeatures77772/')
+                print('cp ../AnalyzeDV/FormulaFeatures/' + filesheet.split('---')[0].split('/')[5] + '---' +
+                      filesheet.split('---')[1] + '---' + str(res[filesheet][r1c1][batch_id]['fr']) + "---" + str(
+                    res[filesheet][r1c1][batch_id]['fc']) + '.json ../AnalyzeDV/FormulaFeatures77772/')
+                os.system('cp ../AnalyzeDV/FormulaFeatures/' + filesheet.split('---')[0].split('/')[5] + '---' +
+                          filesheet.split('---')[1] + '---' + str(res[filesheet][r1c1][batch_id]['fr']) + "---" + str(
+                    res[filesheet][r1c1][batch_id]['fc']) + '.json ../AnalyzeDV/FormulaFeatures77772/')
+
 
 def formula_token_2_domain():
     import base64
-    with open("Formula_77772.json",'r') as f:
+    with open("Formula_77772.json", 'r') as f:
         formulas = json.load(f)
     res = {}
     for formula in formulas:
@@ -1395,8 +1462,9 @@ def formula_token_2_domain():
         domain = base64.b64decode(domain_token)
         # print(domain)
         res[formula_token] = str(domain)
-    with open("formula_token_2_domain_1900.json",'w') as f:
+    with open("formula_token_2_domain_1900.json", 'w') as f:
         json.dump(res, f)
+
 
 def all_filesheet_2_domain():
     import base64
@@ -1407,13 +1475,13 @@ def all_filesheet_2_domain():
     domain2num = {}
     for foldid in folds_list:
         filelist = os.listdir('/datadrive/data/' + foldid + '/')
-        for index,filename in enumerate(filelist):
+        for index, filename in enumerate(filelist):
             try:
                 print(foldid, index, len(filelist))
                 domain_token = filename.split('.')[0].split('_')[-1]
                 # print('domain_token', domain_token )
                 domain = base64.b64decode(domain_token)
-                res[foldid+'/'+filename] = str(domain)
+                res[foldid + '/' + filename] = str(domain)
                 print('str(domain)', str(domain))
                 if str(domain) not in domain2num:
                     domain2num[str(domain)] = 0
@@ -1421,31 +1489,31 @@ def all_filesheet_2_domain():
             except:
                 continue
 
-
-    with open("filename2domain.json",'w') as f:
+    with open("filename2domain.json", 'w') as f:
         json.dump(res, f)
-    with open("domain2num.json",'w') as f:
+    with open("domain2num.json", 'w') as f:
         json.dump(domain2num, f)
 
-    with open("domain2num.json",'r') as f:
+    with open("domain2num.json", 'r') as f:
         domain2num = json.load(f)
 
     domain2num = sorted(domain2num.items(), key=lambda x: x[1], reverse=True)
     new_res = {}
     for tuple in domain2num:
         new_res[tuple[0]] = tuple[1]
-    
-    with open("domain2num.json",'w') as f:
+
+    with open("domain2num.json", 'w') as f:
         json.dump(new_res, f)
 
+
 def select_top10_domain():
-    with open("domain2num.json",'r') as f:
+    with open("domain2num.json", 'r') as f:
         domain2num = json.load(f)
-    with open("filename2domain.json",'r') as f:
+    with open("filename2domain.json", 'r') as f:
         filename2domain = json.load(f)
     res = []
     res1 = []
-    for index,domain in enumerate(domain2num):
+    for index, domain in enumerate(domain2num):
         if index == 10:
             break
         print(domain, domain2num[domain])
@@ -1462,10 +1530,11 @@ def select_top10_domain():
     # with open('training_filenames.json', 'w') as f:
     #     json.dump(res1, f)
 
+
 def select_middle10_domain():
-    with open("domain2num.json",'r') as f:
+    with open("domain2num.json", 'r') as f:
         domain2num = json.load(f)
-    with open("filename2domain.json",'r') as f:
+    with open("filename2domain.json", 'r') as f:
         filename2domain = json.load(f)
     res = []
 
@@ -1478,7 +1547,7 @@ def select_middle10_domain():
     now_index = up_index
     is_up = True
     while len(res) < 10:
-        
+
         domain = list(domain2num.keys())[now_index]
         print(domain)
         print('now_index', now_index)
@@ -1491,10 +1560,10 @@ def select_middle10_domain():
                 down_index -= 1
                 now_index = up_index
             is_up = not is_up
-           
+
         else:
             if is_up:
-                up_index +=1
+                up_index += 1
                 now_index = up_index
             else:
                 down_index -= 1
@@ -1502,12 +1571,11 @@ def select_middle10_domain():
 
     pprint.pprint(res)
     res1 = []
-    for index,domain in enumerate(res):
+    for index, domain in enumerate(res):
         # print(domain, domain2num[domain])
         for filename in filename2domain:
             if filename2domain[filename] == domain[0]:
                 res1.append(filename)
-
 
     # for index,domain in enumerate(domain2num):
     #     if index == 10:
@@ -1526,6 +1594,7 @@ def select_middle10_domain():
     # with open('training_filenames.json', 'w') as f:
     #     json.dump(res1, f)
 
+
 def all_filename_2_domain():
     import base64
     dataset_path = '/datadrive/data/'
@@ -1537,20 +1606,21 @@ def all_filename_2_domain():
         for filename in filenames:
             domain_token = filename.split('/')[-1].split('.')[0].split('_')[-1]
             # print(domain_token)
-            
+
             try:
                 domain = base64.b64decode(domain_token)
                 res[filename] = str(domain)
             except:
                 res[filename] = 'unknown'
-    with open("all_filenames_2_domain.json",'w') as f:
+    with open("all_filenames_2_domain.json", 'w') as f:
         json.dump(res, f)
+
 
 def generate_mondrain_sheet_features_by_workbook_json(is_look=True):
     def argb_to_rgb(value):
         value = value[-6:]
         lv = len(value)
-        return tuple(int(value[i:i+lv//3], 16) for i in range(0, lv, lv//3))
+        return tuple(int(value[i:i + lv // 3], 16) for i in range(0, lv, lv // 3))
 
     def get_template(cell_value, cell_type):
         result = ''
@@ -1574,23 +1644,24 @@ def generate_mondrain_sheet_features_by_workbook_json(is_look=True):
             for char in cell_value:
                 result += 'T'
         return result
+
     one_invalid_cell = {
-            "background_color_r": 0,
-            "background_color_g": 0,
-            "background_color_b": 0,
-            "font_color_r": 0,
-            "font_color_g": 0,
-            "font_color_b": 0,
-            "font_size": 0.0,
-            "font_strikethrough": False,
-            "font_shadow": False,
-            "font_ita": False,
-            "font_bold": False,
-            "height": 0.0,
-            "width": 0.0,
-            "content": '',
-            "content_template": '',
-        },
+        "background_color_r": 0,
+        "background_color_g": 0,
+        "background_color_b": 0,
+        "font_color_r": 0,
+        "font_color_g": 0,
+        "font_color_b": 0,
+        "font_size": 0.0,
+        "font_strikethrough": False,
+        "font_shadow": False,
+        "font_ita": False,
+        "font_bold": False,
+        "height": 0.0,
+        "width": 0.0,
+        "content": '',
+        "content_template": '',
+    },
 
     workbooks = os.listdir('/datadrive/data_deco/completed/')
     # workbooks = os.listdir('/datadrive/data_fuste/')
@@ -1602,23 +1673,22 @@ def generate_mondrain_sheet_features_by_workbook_json(is_look=True):
         except:
             continue
         sheets = wb.sheets()
-        if not os.path.exists('../Demo/fix_deco/'+filename+'.json'):
+        if not os.path.exists('../Demo/fix_deco/' + filename + '.json'):
             print('not exists: fix_deco')
             continue
-        with open('../Demo/fix_deco/'+filename+'.json', 'r') as f:
+        with open('../Demo/fix_deco/' + filename + '.json', 'r') as f:
             workbook_info = json.load(f)
 
         for sheetname in sheets:
             sheetname = sheetname.name
             filesheet = filename + '---' + sheetname
-  
+
             filename = filesheet.split('---')[0].split('/')[-1]
             sheetname = filesheet.split('---')[1]
 
-            
-
-            if os.path.exists('/datadrive-2/data/deco_test/sheets_json_feaures/' + filename + '---' + sheetname+'.json'):
-            # if os.path.exists('/datadrive-2/data/fuste_test/sheets_json_feaures/' + filename + '---' + sheetname+'.json'):
+            if os.path.exists(
+                    '/datadrive-2/data/deco_test/sheets_json_feaures/' + filename + '---' + sheetname + '.json'):
+                # if os.path.exists('/datadrive-2/data/fuste_test/sheets_json_feaures/' + filename + '---' + sheetname+'.json'):
                 print('exists: sheets_json_feaures')
                 continue
 
@@ -1636,7 +1706,7 @@ def generate_mondrain_sheet_features_by_workbook_json(is_look=True):
             for row_json in sheet_info['Rows']:
                 if row_json['Row'] >= start_row and row_json['Row'] < end_row:
                     for cell in row_json['Cells']:
-                        
+
                         new_cell = copy.deepcopy(one_invalid_cell[0])
                         if 'Fill' in cell:
                             if 'ARGB' in cell['Fill']:
@@ -1647,14 +1717,14 @@ def generate_mondrain_sheet_features_by_workbook_json(is_look=True):
                                 new_cell['background_color_b'] = b
                         if 'Width' in cell:
                             new_cell['width'] = cell['Width']
-                    
+
                         if 'Height' in cell:
                             new_cell['height'] = cell['Height']
                         elif 'Height' in row_json:
                             new_cell['height'] = row_json['Height']
                         elif 'DefaultHeight' in row_json:
                             new_cell['height'] = row_json['DefaultHeight']
-                    
+
                         if "Font" in cell:
                             if 'Size' in cell['Font']:
                                 new_cell['font_size'] = cell['Font']['Size']
@@ -1678,12 +1748,12 @@ def generate_mondrain_sheet_features_by_workbook_json(is_look=True):
 
             for row in range(start_row, start_row + 100):
                 for col in range(start_col, start_col + 10):
-                    
+
                     if str(row) + '---' + str(col) in res1:
                         if is_look:
                             res1[str(row) + '---' + str(col)]['row'] = row
                             res1[str(row) + '---' + str(col)]['col'] = col
-        
+
                         res.append(res1[str(row) + '---' + str(col)])
 
                     else:
@@ -1695,9 +1765,11 @@ def generate_mondrain_sheet_features_by_workbook_json(is_look=True):
                         else:
                             res.append(one_invalid_cell)
             print('start saving ....')
-            with open('/datadrive-2/data/deco_test/sheets_json_feaures/' + filename + '---' + sheetname +'.json', 'w') as f:
-            # with open('/datadrive-2/data/fuste_test/sheets_json_feaures/' + filename + '---' + sheetname +'.json', 'w') as f:
+            with open('/datadrive-2/data/deco_test/sheets_json_feaures/' + filename + '---' + sheetname + '.json',
+                      'w') as f:
+                # with open('/datadrive-2/data/fuste_test/sheets_json_feaures/' + filename + '---' + sheetname +'.json', 'w') as f:
                 json.dump(res, f)
+
 
 def generate_sheet_features_by_workbook_json(thread_id, batch_num):
     def get_template(cell_value, cell_type):
@@ -1722,54 +1794,55 @@ def generate_sheet_features_by_workbook_json(thread_id, batch_num):
             for char in cell_value:
                 result += 'T'
         return result
+
     invalid_cell_feature = {
-            "background_color_r": 0,
-            "background_color_g": 0,
-            "background_color_b": 0,
-            "font_color_r": 0,
-            "font_color_g": 0,
-            "font_color_b": 0,
-            "font_size": 0.0,
-            "font_strikethrough": False,
-            "font_shadow": False,
-            "font_ita": False,
-            "font_bold": False,
-            "height": 0.0,
-            "width": 0.0,
-            "content": '',
-            "content_template": '',
-        },
+        "background_color_r": 0,
+        "background_color_g": 0,
+        "background_color_b": 0,
+        "font_color_r": 0,
+        "font_color_g": 0,
+        "font_color_b": 0,
+        "font_size": 0.0,
+        "font_strikethrough": False,
+        "font_shadow": False,
+        "font_ita": False,
+        "font_bold": False,
+        "height": 0.0,
+        "width": 0.0,
+        "content": '',
+        "content_template": '',
+    },
 
     # with open("Formulas_training_with_id.json",'r') as f:
     #     formulas = json.load(f)
 
     # with open("Formulas_middle10domain_with_id.json",'r') as f:
     #     formulas = json.load(f)
-    with open("Formulas_fortune500_with_id.json",'r') as f:
+    with open("Formulas_fortune500_with_id.json", 'r') as f:
         formulas = json.load(f)
 
-    batch_len = len(formulas)/batch_num
-    for index,formula in enumerate(formulas):
-        if(index <= batch_len * (thread_id - 1 ) or index > batch_len * thread_id):
+    batch_len = len(formulas) / batch_num
+    for index, formula in enumerate(formulas):
+        if (index <= batch_len * (thread_id - 1) or index > batch_len * thread_id):
             continue
         filesheet = formula['filesheet']
         filename = filesheet.split('---')[0].split('/')[-1]
         sheetname = filesheet.split('---')[1]
-        
+
         fr = 1
         fc = 1
         # if not os.path.exists('other_training_formulas/' + filename + '---' + sheetname + '---' + str(formula['fr']) + '---' + str(formula['fc']) + '.json'):
         #     continue
         print('filename', filename)
-        if not os.path.exists(root_path+'origin_sheet_features/' + filename + '---' + sheetname + '.json'):
+        if not os.path.exists(root_path + 'origin_sheet_features/' + filename + '---' + sheetname + '.json'):
             print('not exists: middle10domain_origin_sheet_features')
             continue
-        if not os.path.exists('../Demo/origin_fortune500_workbook_json/'+filename+'.json'):
+        if not os.path.exists('../Demo/origin_fortune500_workbook_json/' + filename + '.json'):
             print('not exists: origin_fortune500_workbook_json')
             continue
         # if os.path.exists('fixed_formulas_training/' + filename + '---' + sheetname  + '---' + str(fr) + '---' + str(fc)+'.json'):
         #     continue
-        if os.path.exists(root_path + 'sheets_json_feaures/' + filename + '---' + sheetname+'.json'):
+        if os.path.exists(root_path + 'sheets_json_feaures/' + filename + '---' + sheetname + '.json'):
             print('exists: sheets_json_feaures')
             continue
         print(index, len(formulas))
@@ -1777,20 +1850,20 @@ def generate_sheet_features_by_workbook_json(thread_id, batch_num):
         print('start load file......')
         # with open('../Demo/fixed_workbook_json/'+filename+'.json', 'r') as f:
         #     workbook_info = json.load(f)
-        with open('../Demo/origin_fortune500_workbook_json/'+filename+'.json', 'r') as f:
+        with open('../Demo/origin_fortune500_workbook_json/' + filename + '.json', 'r') as f:
             workbook_info = json.load(f)
         # with open('other_training_formulas/' +  filename + '---' + sheetname + '---' + str(fr) + '---' + str(fc) + '.json', 'r') as f:
         #     origin_feature = json.load(f)
-        with open(root_path + 'origin_sheet_features/' +  filename + '---' + sheetname + '.json', 'r') as f:
+        with open(root_path + 'origin_sheet_features/' + filename + '---' + sheetname + '.json', 'r') as f:
             origin_feature = json.load(f)
 
-        if fr-50 >= 1:
-            start_row =  fr-50 
+        if fr - 50 >= 1:
+            start_row = fr - 50
         else:
             start_row = 1
 
-        if fc-5 >= 1:
-            start_column = fc-5
+        if fc - 5 >= 1:
+            start_column = fc - 5
         else:
             start_column = 1
 
@@ -1799,11 +1872,10 @@ def generate_sheet_features_by_workbook_json(thread_id, batch_num):
         table_feature = {}
         count = 0
         for row in range(start_row, start_row + 100):
-            table_feature[row]= {}
+            table_feature[row] = {}
             for col in range(start_column, start_column + 10):
                 table_feature[row][col] = feature_list[count]
                 count += 1
-
 
         for sheet_dict in workbook_info['Sheets']:
             if sheet_dict['Name'] == sheetname:
@@ -1822,7 +1894,7 @@ def generate_sheet_features_by_workbook_json(thread_id, batch_num):
                     row_info = row_dict
 
             for col in range(new_start_column, new_start_column + 10):
-                if row <= 0 or col <=0:
+                if row <= 0 or col <= 0:
                     new_feature_list.append(invalid_cell_feature)
                 else:
                     valid_count += 1
@@ -1860,8 +1932,9 @@ def generate_sheet_features_by_workbook_json(thread_id, batch_num):
         print('start saving ....')
         # with open('fixed_formulas_training/' + filename + '---' + sheetname  + '---' + str(fr) + '---' + str(fc)+'.json', 'w') as f:
         #     json.dump(origin_feature, f)
-        with open(root_path + 'sheets_json_feaures/' + filename + '---' + sheetname +'.json', 'w') as f:
+        with open(root_path + 'sheets_json_feaures/' + filename + '---' + sheetname + '.json', 'w') as f:
             json.dump(origin_feature, f)
+
 
 def generate_formula_features_by_workbook_json(thread_id, batch_num):
     def get_template(cell_value, cell_type):
@@ -1886,74 +1959,79 @@ def generate_formula_features_by_workbook_json(thread_id, batch_num):
             for char in cell_value:
                 result += 'T'
         return result
+
     invalid_cell_feature = {
-            "background_color_r": 0,
-            "background_color_g": 0,
-            "background_color_b": 0,
-            "font_color_r": 0,
-            "font_color_g": 0,
-            "font_color_b": 0,
-            "font_size": 0.0,
-            "font_strikethrough": False,
-            "font_shadow": False,
-            "font_ita": False,
-            "font_bold": False,
-            "height": 0.0,
-            "width": 0.0,
-            "content": '',
-            "content_template": '',
-        },
+        "background_color_r": 0,
+        "background_color_g": 0,
+        "background_color_b": 0,
+        "font_color_r": 0,
+        "font_color_g": 0,
+        "font_color_b": 0,
+        "font_size": 0.0,
+        "font_strikethrough": False,
+        "font_shadow": False,
+        "font_ita": False,
+        "font_bold": False,
+        "height": 0.0,
+        "width": 0.0,
+        "content": '',
+        "content_template": '',
+    },
 
     # with open("Formulas_training_with_id.json",'r') as f:
     #     formulas = json.load(f)
 
     # with open("Formulas_middle10domain_with_id.json",'r') as f:
-    with open("Formulas_fortune500_with_id.json",'r') as f:
+    with open("Formulas_fortune500_with_id.json", 'r') as f:
         formulas = json.load(f)
 
-    batch_len = len(formulas)/batch_num
-    for index,formula in enumerate(formulas):
-        if(index <= batch_len * (thread_id - 1 ) or index > batch_len * thread_id):
+    batch_len = len(formulas) / batch_num
+    for index, formula in enumerate(formulas):
+        if (index <= batch_len * (thread_id - 1) or index > batch_len * thread_id):
             continue
         filesheet = formula['filesheet']
         filename = filesheet.split('---')[0].split('/')[-1]
         sheetname = filesheet.split('---')[1]
-        
+
         fr = formula['fr']
         fc = formula['fc']
         # if not os.path.exists('other_training_formulas/' + filename + '---' + sheetname + '---' + str(formula['fr']) + '---' + str(formula['fc']) + '.json'):
         #     continue
         # filename = filename.replace('')
-        print('../Demo/fix_fortune500/' + filename + '---' + sheetname + '---' + str(formula['fr']) + '---' + str(formula['fc']) + '.json')
-        if not os.path.exists('../Demo/fix_fortune500/' + filename + '---' + sheetname + '---' + str(formula['fr']) + '---' + str(formula['fc']) + '.json'):
+        print('../Demo/fix_fortune500/' + filename + '---' + sheetname + '---' + str(formula['fr']) + '---' + str(
+            formula['fc']) + '.json')
+        if not os.path.exists(
+                '../Demo/fix_fortune500/' + filename + '---' + sheetname + '---' + str(formula['fr']) + '---' + str(
+                    formula['fc']) + '.json'):
             continue
         print("XXXXXX")
-        if not os.path.exists('../Demo/fix_fortune500/'+filename+'.json'):
+        if not os.path.exists('../Demo/fix_fortune500/' + filename + '.json'):
             continue
         # if os.path.exists('fixed_formulas_training/' + filename + '---' + sheetname  + '---' + str(fr) + '---' + str(fc)+'.json'):
         #     continue
         # if os.path.exists(root_path + 'formulas_json_feaures/' + filename + '---' + sheetname  + '---' + str(fr) + '---' + str(fc)+'.json'):
-            # continue
+        # continue
         print(index, len(formulas))
         print(formula)
         print('start load file......')
         start_time = time.time()
         # with open('../Demo/fixed_workbook_json/'+filename+'.json', 'r') as f:
         #     workbook_info = json.load(f)
-        with open('../Demo/fix_fortune500/'+filename+'.json', 'r') as f:
+        with open('../Demo/fix_fortune500/' + filename + '.json', 'r') as f:
             workbook_info = json.load(f)
         # with open('other_training_formulas/' +  filename + '---' + sheetname + '---' + str(fr) + '---' + str(fc) + '.json', 'r') as f:
         #     origin_feature = json.load(f)
-        with open(root_path + 'origin_fortune500_formula_features/' +  filename + '---' + sheetname + '---' + str(fr) + '---' + str(fc) + '.json', 'r') as f:
+        with open(root_path + 'origin_fortune500_formula_features/' + filename + '---' + sheetname + '---' + str(
+                fr) + '---' + str(fc) + '.json', 'r') as f:
             origin_feature = json.load(f)
 
-        if fr-50 >= 1:
-            start_row =  fr-50 
+        if fr - 50 >= 1:
+            start_row = fr - 50
         else:
             start_row = 1
 
-        if fc-5 >= 1:
-            start_column = fc-5
+        if fc - 5 >= 1:
+            start_column = fc - 5
         else:
             start_column = 1
 
@@ -1962,11 +2040,10 @@ def generate_formula_features_by_workbook_json(thread_id, batch_num):
         table_feature = {}
         count = 0
         for row in range(start_row, start_row + 100):
-            table_feature[row]= {}
+            table_feature[row] = {}
             for col in range(start_column, start_column + 10):
                 table_feature[row][col] = feature_list[count]
                 count += 1
-
 
         for sheet_dict in workbook_info['Sheets']:
             if sheet_dict['Name'] == sheetname:
@@ -1985,7 +2062,7 @@ def generate_formula_features_by_workbook_json(thread_id, batch_num):
                     row_info = row_dict
 
             for col in range(new_start_column, new_start_column + 10):
-                if row <= 0 or col <=0:
+                if row <= 0 or col <= 0:
                     new_feature_list.append(invalid_cell_feature)
                 else:
                     valid_count += 1
@@ -2023,11 +2100,13 @@ def generate_formula_features_by_workbook_json(thread_id, batch_num):
         print('start saving ....')
         # with open('fixed_formulas_training/' + filename + '---' + sheetname  + '---' + str(fr) + '---' + str(fc)+'.json', 'w') as f:
         #     json.dump(origin_feature, f)
-        with open(root_path + 'formulas_json_feaures/' + filename + '---' + sheetname  + '---' + str(fr) + '---' + str(fc)+'.json', 'w') as f:
+        with open(root_path + 'formulas_json_feaures/' + filename + '---' + sheetname + '---' + str(fr) + '---' + str(
+                fc) + '.json', 'w') as f:
             json.dump(origin_feature, f)
         end_time = time.time()
-        print(end_time-start_time)
+        print(end_time - start_time)
         break
+
 
 def generate_ref_features_by_workbook_json(thread_id, batch_num):
     def get_template(cell_value, cell_type):
@@ -2052,74 +2131,73 @@ def generate_ref_features_by_workbook_json(thread_id, batch_num):
             for char in cell_value:
                 result += 'T'
         return result
+
     invalid_cell_feature = {
-            "background_color_r": 0,
-            "background_color_g": 0,
-            "background_color_b": 0,
-            "font_color_r": 0,
-            "font_color_g": 0,
-            "font_color_b": 0,
-            "font_size": 0.0,
-            "font_strikethrough": False,
-            "font_shadow": False,
-            "font_ita": False,
-            "font_bold": False,
-            "height": 0.0,
-            "width": 0.0,
-            "content": '',
-            "content_template": '',
-        },
+        "background_color_r": 0,
+        "background_color_g": 0,
+        "background_color_b": 0,
+        "font_color_r": 0,
+        "font_color_g": 0,
+        "font_color_b": 0,
+        "font_size": 0.0,
+        "font_strikethrough": False,
+        "font_shadow": False,
+        "font_ita": False,
+        "font_bold": False,
+        "height": 0.0,
+        "width": 0.0,
+        "content": '',
+        "content_template": '',
+    },
 
     # with open("Formulas_training_with_id.json",'r') as f:
     #     formulas = json.load(f)
 
     # with open("Formulas_middle10domain_with_id.json",'r') as f:
     formula_token_files = os.listdir(root_path + "refcell_features")
-    
 
-
-    batch_len = len(formula_token_files)/batch_num
-    for index,formula_token_file in enumerate(formula_token_files):
-        if(index <= batch_len * (thread_id - 1 ) or index > batch_len * thread_id):
+    batch_len = len(formula_token_files) / batch_num
+    for index, formula_token_file in enumerate(formula_token_files):
+        if (index <= batch_len * (thread_id - 1) or index > batch_len * thread_id):
             continue
-       
+
         filename = formula_token_file.split('---')[0].split('/')[-1]
         sheetname = formula_token_file.split('---')[1]
-        
+
         fr = int(formula_token_file.split('---')[2])
-        fc = int(formula_token_file.split('---')[3].replace('.json',''))
+        fc = int(formula_token_file.split('---')[3].replace('.json', ''))
         # if not os.path.exists('other_training_formulas/' + filename + '---' + sheetname + '---' + str(formula['fr']) + '---' + str(formula['fc']) + '.json'):
         #     continue
         # filename = filename.replace('')
         print('formula_token_file', formula_token_file)
-        if not os.path.exists(root_path+'refcell_features/'+formula_token_file):
+        if not os.path.exists(root_path + 'refcell_features/' + formula_token_file):
             continue
         print("XXXXXX")
         print('filename', filename)
-        if not os.path.exists('../Demo/origin_fortune500_workbook_json/'+filename+'.json'):
+        if not os.path.exists('../Demo/origin_fortune500_workbook_json/' + filename + '.json'):
             continue
         # if os.path.exists('fixed_formulas_training/' + filename + '---' + sheetname  + '---' + str(fr) + '---' + str(fc)+'.json'):
         #     continue
-        if os.path.exists(root_path + 'refcell_json_features/' +formula_token_file):
+        if os.path.exists(root_path + 'refcell_json_features/' + formula_token_file):
             continue
         print(index, len(formula_token_files))
         print('start load file......')
         # with open('../Demo/fixed_workbook_json/'+filename+'.json', 'r') as f:
         #     workbook_info = json.load(f)
-        with open('../Demo/origin_fortune500_workbook_json/'+filename+'.json', 'r') as f:
+        with open('../Demo/origin_fortune500_workbook_json/' + filename + '.json', 'r') as f:
             workbook_info = json.load(f)
         # with open('other_training_formulas/' +  filename + '---' + sheetname + '---' + str(fr) + '---' + str(fc) + '.json', 'r') as f:
         #     origin_feature = json.load(f)
-        with open(root_path + 'refcell_features/' +  formula_token_file, 'r') as f:
+        with open(root_path + 'refcell_features/' + formula_token_file, 'r') as f:
             origin_feature = json.load(f)
 
-        if fr-50 >= 1:
-            start_row =  fr-50 
+        if fr - 50 >= 1:
+            start_row = fr - 50
         else:
             start_row = 1
 
-        if fc-5 >= 1:
-            start_column = fc-5
+        if fc - 5 >= 1:
+            start_column = fc - 5
         else:
             start_column = 1
 
@@ -2128,11 +2206,10 @@ def generate_ref_features_by_workbook_json(thread_id, batch_num):
         table_feature = {}
         count = 0
         for row in range(start_row, start_row + 100):
-            table_feature[row]= {}
+            table_feature[row] = {}
             for col in range(start_column, start_column + 10):
                 table_feature[row][col] = feature_list[count]
                 count += 1
-
 
         for sheet_dict in workbook_info['Sheets']:
             if sheet_dict['Name'] == sheetname:
@@ -2151,7 +2228,7 @@ def generate_ref_features_by_workbook_json(thread_id, batch_num):
                     row_info = row_dict
 
             for col in range(new_start_column, new_start_column + 10):
-                if row <= 0 or col <=0:
+                if row <= 0 or col <= 0:
                     new_feature_list.append(invalid_cell_feature)
                 else:
                     valid_count += 1
@@ -2216,73 +2293,72 @@ def generate_tile_features_by_workbook_json(thread_id, batch_num):
             for char in cell_value:
                 result += 'T'
         return result
+
     invalid_cell_feature = {
-            "background_color_r": 0,
-            "background_color_g": 0,
-            "background_color_b": 0,
-            "font_color_r": 0,
-            "font_color_g": 0,
-            "font_color_b": 0,
-            "font_size": 0.0,
-            "font_strikethrough": False,
-            "font_shadow": False,
-            "font_ita": False,
-            "font_bold": False,
-            "height": 0.0,
-            "width": 0.0,
-            "content": '',
-            "content_template": '',
-        },
+        "background_color_r": 0,
+        "background_color_g": 0,
+        "background_color_b": 0,
+        "font_color_r": 0,
+        "font_color_g": 0,
+        "font_color_b": 0,
+        "font_size": 0.0,
+        "font_strikethrough": False,
+        "font_shadow": False,
+        "font_ita": False,
+        "font_bold": False,
+        "height": 0.0,
+        "width": 0.0,
+        "content": '',
+        "content_template": '',
+    },
 
     # with open("Formulas_training_with_id.json",'r') as f:
     #     formulas = json.load(f)
 
     # with open("Formulas_middle10domain_with_id.json",'r') as f:
     formula_token_files = os.listdir(root_path + "tile_features")
-    
 
-
-    batch_len = len(formula_token_files)/batch_num
-    for index,formula_token_file in enumerate(formula_token_files):
-        if(index <= batch_len * (thread_id - 1 ) or index > batch_len * thread_id):
+    batch_len = len(formula_token_files) / batch_num
+    for index, formula_token_file in enumerate(formula_token_files):
+        if (index <= batch_len * (thread_id - 1) or index > batch_len * thread_id):
             continue
-       
+
         filename = formula_token_file.split('---')[0].split('/')[-1]
         sheetname = formula_token_file.split('---')[1]
-        
+
         fr = int(formula_token_file.split('---')[2])
-        fc = int(formula_token_file.split('---')[3].replace('.json',''))
+        fc = int(formula_token_file.split('---')[3].replace('.json', ''))
         # if not os.path.exists('other_training_formulas/' + filename + '---' + sheetname + '---' + str(formula['fr']) + '---' + str(formula['fc']) + '.json'):
         #     continue
         # filename = filename.replace('')
         print('formula_token_file', formula_token_file)
-        if not os.path.exists(root_path+'tile_features/'+formula_token_file):
+        if not os.path.exists(root_path + 'tile_features/' + formula_token_file):
             continue
         print("XXXXXX")
-        if not os.path.exists('../Demo/origin_fortune500_workbook_json/'+filename+'.json'):
+        if not os.path.exists('../Demo/origin_fortune500_workbook_json/' + filename + '.json'):
             continue
         # if os.path.exists('fixed_formulas_training/' + filename + '---' + sheetname  + '---' + str(fr) + '---' + str(fc)+'.json'):
         #     continue
-        if os.path.exists(root_path + 'tile_json_feaures/' +formula_token_file):
+        if os.path.exists(root_path + 'tile_json_feaures/' + formula_token_file):
             continue
         print(index, len(formula_token_files))
         print('start load file......')
         # with open('../Demo/fixed_workbook_json/'+filename+'.json', 'r') as f:
         #     workbook_info = json.load(f)
-        with open('../Demo/origin_fortune500_workbook_json/'+filename+'.json', 'r') as f:
+        with open('../Demo/origin_fortune500_workbook_json/' + filename + '.json', 'r') as f:
             workbook_info = json.load(f)
         # with open('other_training_formulas/' +  filename + '---' + sheetname + '---' + str(fr) + '---' + str(fc) + '.json', 'r') as f:
         #     origin_feature = json.load(f)
-        with open(root_path + 'tile_features/' +  formula_token_file, 'r') as f:
+        with open(root_path + 'tile_features/' + formula_token_file, 'r') as f:
             origin_feature = json.load(f)
 
-        if fr-50 >= 1:
-            start_row =  fr-50 
+        if fr - 50 >= 1:
+            start_row = fr - 50
         else:
             start_row = 1
 
-        if fc-5 >= 1:
-            start_column = fc-5
+        if fc - 5 >= 1:
+            start_column = fc - 5
         else:
             start_column = 1
 
@@ -2291,11 +2367,10 @@ def generate_tile_features_by_workbook_json(thread_id, batch_num):
         table_feature = {}
         count = 0
         for row in range(start_row, start_row + 100):
-            table_feature[row]= {}
+            table_feature[row] = {}
             for col in range(start_column, start_column + 10):
                 table_feature[row][col] = feature_list[count]
                 count += 1
-
 
         for sheet_dict in workbook_info['Sheets']:
             if sheet_dict['Name'] == sheetname:
@@ -2314,7 +2389,7 @@ def generate_tile_features_by_workbook_json(thread_id, batch_num):
                     row_info = row_dict
 
             for col in range(new_start_column, new_start_column + 10):
-                if row <= 0 or col <=0:
+                if row <= 0 or col <= 0:
                     new_feature_list.append(invalid_cell_feature)
                 else:
                     valid_count += 1
@@ -2356,7 +2431,6 @@ def generate_tile_features_by_workbook_json(thread_id, batch_num):
             json.dump(origin_feature, f)
 
 
-             
 def generate_neighbors_features_by_workbook_json(thread_id, batch_num):
     def get_template(cell_value, cell_type):
         result = ''
@@ -2380,56 +2454,59 @@ def generate_neighbors_features_by_workbook_json(thread_id, batch_num):
             for char in cell_value:
                 result += 'T'
         return result
+
     invalid_cell_feature = {
-            "background_color_r": 0,
-            "background_color_g": 0,
-            "background_color_b": 0,
-            "font_color_r": 0,
-            "font_color_g": 0,
-            "font_color_b": 0,
-            "font_size": 0.0,
-            "font_strikethrough": False,
-            "font_shadow": False,
-            "font_ita": False,
-            "font_bold": False,
-            "height": 0.0,
-            "width": 0.0,
-            "content": '',
-            "content_template": '',
-        },
-    
+        "background_color_r": 0,
+        "background_color_g": 0,
+        "background_color_b": 0,
+        "font_color_r": 0,
+        "font_color_g": 0,
+        "font_color_b": 0,
+        "font_size": 0.0,
+        "font_strikethrough": False,
+        "font_shadow": False,
+        "font_ita": False,
+        "font_bold": False,
+        "height": 0.0,
+        "width": 0.0,
+        "content": '',
+        "content_template": '',
+    },
+
     filelist = os.listdir('/datadrive-2/data/neighbors/')
     filelist.sort()
-    batch_len = len(filelist)/batch_num
-    for index,filename in enumerate(filelist):
-        if(index <= batch_len * (thread_id - 1 ) or index > batch_len * thread_id):
+    batch_len = len(filelist) / batch_num
+    for index, filename in enumerate(filelist):
+        if (index <= batch_len * (thread_id - 1) or index > batch_len * thread_id):
             continue
         token = filename.replace('.json', '')
         filesheet = token.split('---')[0]
         filename = token.split('---')[0].split('/')[-1]
         sheetname = token.split('---')[1]
-        
+
         fr = int(token.split('---')[2])
         fc = int(token.split('---')[3])
 
-        if os.path.exists('fixed_neighbors_training/' + filename + '---' + sheetname  + '---' + str(fr) + '---' + str(fc)+'.json'):
+        if os.path.exists('fixed_neighbors_training/' + filename + '---' + sheetname + '---' + str(fr) + '---' + str(
+                fc) + '.json'):
             continue
         print(index, len(filelist))
         print('start load file......')
-        if not os.path.exists('../Demo/fixed_workbook_json/'+filename+'.json'):
+        if not os.path.exists('../Demo/fixed_workbook_json/' + filename + '.json'):
             continue
-        with open('../Demo/fixed_workbook_json/'+filename+'.json', 'r') as f:
+        with open('../Demo/fixed_workbook_json/' + filename + '.json', 'r') as f:
             workbook_info = json.load(f)
-        with open('/datadrive-2/data/neighbors/' +  filename + '---' + sheetname + '---' + str(fr) + '---' + str(fc) + '.json', 'r') as f:
+        with open('/datadrive-2/data/neighbors/' + filename + '---' + sheetname + '---' + str(fr) + '---' + str(
+                fc) + '.json', 'r') as f:
             origin_feature = json.load(f)
 
-        if fr-50 >= 1:
-            start_row =  fr-50 
+        if fr - 50 >= 1:
+            start_row = fr - 50
         else:
             start_row = 1
 
-        if fc-5 >= 1:
-            start_column = fc-5
+        if fc - 5 >= 1:
+            start_column = fc - 5
         else:
             start_column = 1
 
@@ -2438,11 +2515,10 @@ def generate_neighbors_features_by_workbook_json(thread_id, batch_num):
         table_feature = {}
         count = 0
         for row in range(start_row, start_row + 100):
-            table_feature[row]= {}
+            table_feature[row] = {}
             for col in range(start_column, start_column + 10):
                 table_feature[row][col] = feature_list[count]
                 count += 1
-
 
         for sheet_dict in workbook_info['Sheets']:
             if sheet_dict['Name'] == sheetname:
@@ -2461,7 +2537,7 @@ def generate_neighbors_features_by_workbook_json(thread_id, batch_num):
                     row_info = row_dict
 
             for col in range(new_start_column, new_start_column + 10):
-                if row <= 0 or col <=0:
+                if row <= 0 or col <= 0:
                     new_feature_list.append(invalid_cell_feature)
                 else:
                     valid_count += 1
@@ -2497,135 +2573,141 @@ def generate_neighbors_features_by_workbook_json(thread_id, batch_num):
                     # print(table_feature[row][col])
         origin_feature['sheetfeature'] = new_feature_list
         print('start saving ....')
-        with open('fixed_neighbors_training/' + filename + '---' + sheetname  + '---' + str(fr) + '---' + str(fc)+'.json', 'w') as f:
+        with open('fixed_neighbors_training/' + filename + '---' + sheetname + '---' + str(fr) + '---' + str(
+                fc) + '.json', 'w') as f:
             json.dump(origin_feature, f)
         # break
+
+
 def para_run_sheet_feature():
-    process = [Process(target=generate_sheet_features_by_workbook_json, args=(1,20)),
-        Process(target=generate_sheet_features_by_workbook_json, args=(2,20)), 
-        Process(target=generate_sheet_features_by_workbook_json, args=(3,20)),
-        Process(target=generate_sheet_features_by_workbook_json, args=(4,20)), 
-        Process(target=generate_sheet_features_by_workbook_json, args=(5,20)),
-        Process(target=generate_sheet_features_by_workbook_json, args=(6,20)), 
-        Process(target=generate_sheet_features_by_workbook_json, args=(7,20)),
-        Process(target=generate_sheet_features_by_workbook_json, args=(8,20)), 
-        Process(target=generate_sheet_features_by_workbook_json, args=(9,20)),
-        Process(target=generate_sheet_features_by_workbook_json, args=(10,20)), 
-        Process(target=generate_sheet_features_by_workbook_json, args=(11,20)),
-        Process(target=generate_sheet_features_by_workbook_json, args=(12,20)), 
-        Process(target=generate_sheet_features_by_workbook_json, args=(13,20)),
-        Process(target=generate_sheet_features_by_workbook_json, args=(14,20)), 
-        Process(target=generate_sheet_features_by_workbook_json, args=(15,20)),
-        Process(target=generate_sheet_features_by_workbook_json, args=(16,20)), 
-        Process(target=generate_sheet_features_by_workbook_json, args=(17,20)),
-        Process(target=generate_sheet_features_by_workbook_json, args=(18,20)), 
-        Process(target=generate_sheet_features_by_workbook_json, args=(19,20)), 
-        Process(target=generate_sheet_features_by_workbook_json, args=(20,20)), 
-    ]
+    process = [Process(target=generate_sheet_features_by_workbook_json, args=(1, 20)),
+               Process(target=generate_sheet_features_by_workbook_json, args=(2, 20)),
+               Process(target=generate_sheet_features_by_workbook_json, args=(3, 20)),
+               Process(target=generate_sheet_features_by_workbook_json, args=(4, 20)),
+               Process(target=generate_sheet_features_by_workbook_json, args=(5, 20)),
+               Process(target=generate_sheet_features_by_workbook_json, args=(6, 20)),
+               Process(target=generate_sheet_features_by_workbook_json, args=(7, 20)),
+               Process(target=generate_sheet_features_by_workbook_json, args=(8, 20)),
+               Process(target=generate_sheet_features_by_workbook_json, args=(9, 20)),
+               Process(target=generate_sheet_features_by_workbook_json, args=(10, 20)),
+               Process(target=generate_sheet_features_by_workbook_json, args=(11, 20)),
+               Process(target=generate_sheet_features_by_workbook_json, args=(12, 20)),
+               Process(target=generate_sheet_features_by_workbook_json, args=(13, 20)),
+               Process(target=generate_sheet_features_by_workbook_json, args=(14, 20)),
+               Process(target=generate_sheet_features_by_workbook_json, args=(15, 20)),
+               Process(target=generate_sheet_features_by_workbook_json, args=(16, 20)),
+               Process(target=generate_sheet_features_by_workbook_json, args=(17, 20)),
+               Process(target=generate_sheet_features_by_workbook_json, args=(18, 20)),
+               Process(target=generate_sheet_features_by_workbook_json, args=(19, 20)),
+               Process(target=generate_sheet_features_by_workbook_json, args=(20, 20)),
+               ]
     [p.start() for p in process]  # 开启了两个进程
-    [p.join() for p in process]   # 等待两个进程依次结束
+    [p.join() for p in process]  # 等待两个进程依次结束
+
 
 def para_run():
-    process = [Process(target=generate_formula_features_by_workbook_json, args=(1,20)),
-        Process(target=generate_formula_features_by_workbook_json, args=(2,20)), 
-        Process(target=generate_formula_features_by_workbook_json, args=(3,20)),
-        Process(target=generate_formula_features_by_workbook_json, args=(4,20)), 
-        Process(target=generate_formula_features_by_workbook_json, args=(5,20)),
-        Process(target=generate_formula_features_by_workbook_json, args=(6,20)), 
-        Process(target=generate_formula_features_by_workbook_json, args=(7,20)),
-        Process(target=generate_formula_features_by_workbook_json, args=(8,20)), 
-        Process(target=generate_formula_features_by_workbook_json, args=(9,20)),
-        Process(target=generate_formula_features_by_workbook_json, args=(10,20)), 
-        Process(target=generate_formula_features_by_workbook_json, args=(11,20)),
-        Process(target=generate_formula_features_by_workbook_json, args=(12,20)), 
-        Process(target=generate_formula_features_by_workbook_json, args=(13,20)),
-        Process(target=generate_formula_features_by_workbook_json, args=(14,20)), 
-        Process(target=generate_formula_features_by_workbook_json, args=(15,20)),
-        Process(target=generate_formula_features_by_workbook_json, args=(16,20)), 
-        Process(target=generate_formula_features_by_workbook_json, args=(17,20)),
-        Process(target=generate_formula_features_by_workbook_json, args=(18,20)), 
-        Process(target=generate_formula_features_by_workbook_json, args=(19,20)), 
-        Process(target=generate_formula_features_by_workbook_json, args=(20,20)), 
-    ]
+    process = [Process(target=generate_formula_features_by_workbook_json, args=(1, 20)),
+               Process(target=generate_formula_features_by_workbook_json, args=(2, 20)),
+               Process(target=generate_formula_features_by_workbook_json, args=(3, 20)),
+               Process(target=generate_formula_features_by_workbook_json, args=(4, 20)),
+               Process(target=generate_formula_features_by_workbook_json, args=(5, 20)),
+               Process(target=generate_formula_features_by_workbook_json, args=(6, 20)),
+               Process(target=generate_formula_features_by_workbook_json, args=(7, 20)),
+               Process(target=generate_formula_features_by_workbook_json, args=(8, 20)),
+               Process(target=generate_formula_features_by_workbook_json, args=(9, 20)),
+               Process(target=generate_formula_features_by_workbook_json, args=(10, 20)),
+               Process(target=generate_formula_features_by_workbook_json, args=(11, 20)),
+               Process(target=generate_formula_features_by_workbook_json, args=(12, 20)),
+               Process(target=generate_formula_features_by_workbook_json, args=(13, 20)),
+               Process(target=generate_formula_features_by_workbook_json, args=(14, 20)),
+               Process(target=generate_formula_features_by_workbook_json, args=(15, 20)),
+               Process(target=generate_formula_features_by_workbook_json, args=(16, 20)),
+               Process(target=generate_formula_features_by_workbook_json, args=(17, 20)),
+               Process(target=generate_formula_features_by_workbook_json, args=(18, 20)),
+               Process(target=generate_formula_features_by_workbook_json, args=(19, 20)),
+               Process(target=generate_formula_features_by_workbook_json, args=(20, 20)),
+               ]
     [p.start() for p in process]  # 开启了两个进程
-    [p.join() for p in process]   # 等待两个进程依次结束
+    [p.join() for p in process]  # 等待两个进程依次结束
+
 
 def para_tile_run():
-    process = [Process(target=generate_tile_features_by_workbook_json, args=(1,20)),
-        Process(target=generate_tile_features_by_workbook_json, args=(2,20)), 
-        Process(target=generate_tile_features_by_workbook_json, args=(3,20)),
-        Process(target=generate_tile_features_by_workbook_json, args=(4,20)), 
-        Process(target=generate_tile_features_by_workbook_json, args=(5,20)),
-        Process(target=generate_tile_features_by_workbook_json, args=(6,20)), 
-        Process(target=generate_tile_features_by_workbook_json, args=(7,20)),
-        Process(target=generate_tile_features_by_workbook_json, args=(8,20)), 
-        Process(target=generate_tile_features_by_workbook_json, args=(9,20)),
-        Process(target=generate_tile_features_by_workbook_json, args=(10,20)), 
-        Process(target=generate_tile_features_by_workbook_json, args=(11,20)),
-        Process(target=generate_tile_features_by_workbook_json, args=(12,20)), 
-        Process(target=generate_tile_features_by_workbook_json, args=(13,20)),
-        Process(target=generate_tile_features_by_workbook_json, args=(14,20)), 
-        Process(target=generate_tile_features_by_workbook_json, args=(15,20)),
-        Process(target=generate_tile_features_by_workbook_json, args=(16,20)), 
-        Process(target=generate_tile_features_by_workbook_json, args=(17,20)),
-        Process(target=generate_tile_features_by_workbook_json, args=(18,20)), 
-        Process(target=generate_tile_features_by_workbook_json, args=(19,20)), 
-        Process(target=generate_tile_features_by_workbook_json, args=(20,20)), 
-    ]
+    process = [Process(target=generate_tile_features_by_workbook_json, args=(1, 20)),
+               Process(target=generate_tile_features_by_workbook_json, args=(2, 20)),
+               Process(target=generate_tile_features_by_workbook_json, args=(3, 20)),
+               Process(target=generate_tile_features_by_workbook_json, args=(4, 20)),
+               Process(target=generate_tile_features_by_workbook_json, args=(5, 20)),
+               Process(target=generate_tile_features_by_workbook_json, args=(6, 20)),
+               Process(target=generate_tile_features_by_workbook_json, args=(7, 20)),
+               Process(target=generate_tile_features_by_workbook_json, args=(8, 20)),
+               Process(target=generate_tile_features_by_workbook_json, args=(9, 20)),
+               Process(target=generate_tile_features_by_workbook_json, args=(10, 20)),
+               Process(target=generate_tile_features_by_workbook_json, args=(11, 20)),
+               Process(target=generate_tile_features_by_workbook_json, args=(12, 20)),
+               Process(target=generate_tile_features_by_workbook_json, args=(13, 20)),
+               Process(target=generate_tile_features_by_workbook_json, args=(14, 20)),
+               Process(target=generate_tile_features_by_workbook_json, args=(15, 20)),
+               Process(target=generate_tile_features_by_workbook_json, args=(16, 20)),
+               Process(target=generate_tile_features_by_workbook_json, args=(17, 20)),
+               Process(target=generate_tile_features_by_workbook_json, args=(18, 20)),
+               Process(target=generate_tile_features_by_workbook_json, args=(19, 20)),
+               Process(target=generate_tile_features_by_workbook_json, args=(20, 20)),
+               ]
     [p.start() for p in process]  # 开启了两个进程
-    [p.join() for p in process]   # 等待两个进程依次结束
+    [p.join() for p in process]  # 等待两个进程依次结束
 
 
 def para_refcell_run():
-    process = [Process(target=generate_ref_features_by_workbook_json, args=(1,20)),
-        Process(target=generate_ref_features_by_workbook_json, args=(2,20)), 
-        Process(target=generate_ref_features_by_workbook_json, args=(3,20)),
-        Process(target=generate_ref_features_by_workbook_json, args=(4,20)), 
-        Process(target=generate_ref_features_by_workbook_json, args=(5,20)),
-        Process(target=generate_ref_features_by_workbook_json, args=(6,20)), 
-        Process(target=generate_ref_features_by_workbook_json, args=(7,20)),
-        Process(target=generate_ref_features_by_workbook_json, args=(8,20)), 
-        Process(target=generate_ref_features_by_workbook_json, args=(9,20)),
-        Process(target=generate_ref_features_by_workbook_json, args=(10,20)), 
-        Process(target=generate_ref_features_by_workbook_json, args=(11,20)),
-        Process(target=generate_ref_features_by_workbook_json, args=(12,20)), 
-        Process(target=generate_ref_features_by_workbook_json, args=(13,20)),
-        Process(target=generate_ref_features_by_workbook_json, args=(14,20)), 
-        Process(target=generate_ref_features_by_workbook_json, args=(15,20)),
-        Process(target=generate_ref_features_by_workbook_json, args=(16,20)), 
-        Process(target=generate_ref_features_by_workbook_json, args=(17,20)),
-        Process(target=generate_ref_features_by_workbook_json, args=(18,20)), 
-        Process(target=generate_ref_features_by_workbook_json, args=(19,20)), 
-        Process(target=generate_ref_features_by_workbook_json, args=(20,20)), 
-    ]
+    process = [Process(target=generate_ref_features_by_workbook_json, args=(1, 20)),
+               Process(target=generate_ref_features_by_workbook_json, args=(2, 20)),
+               Process(target=generate_ref_features_by_workbook_json, args=(3, 20)),
+               Process(target=generate_ref_features_by_workbook_json, args=(4, 20)),
+               Process(target=generate_ref_features_by_workbook_json, args=(5, 20)),
+               Process(target=generate_ref_features_by_workbook_json, args=(6, 20)),
+               Process(target=generate_ref_features_by_workbook_json, args=(7, 20)),
+               Process(target=generate_ref_features_by_workbook_json, args=(8, 20)),
+               Process(target=generate_ref_features_by_workbook_json, args=(9, 20)),
+               Process(target=generate_ref_features_by_workbook_json, args=(10, 20)),
+               Process(target=generate_ref_features_by_workbook_json, args=(11, 20)),
+               Process(target=generate_ref_features_by_workbook_json, args=(12, 20)),
+               Process(target=generate_ref_features_by_workbook_json, args=(13, 20)),
+               Process(target=generate_ref_features_by_workbook_json, args=(14, 20)),
+               Process(target=generate_ref_features_by_workbook_json, args=(15, 20)),
+               Process(target=generate_ref_features_by_workbook_json, args=(16, 20)),
+               Process(target=generate_ref_features_by_workbook_json, args=(17, 20)),
+               Process(target=generate_ref_features_by_workbook_json, args=(18, 20)),
+               Process(target=generate_ref_features_by_workbook_json, args=(19, 20)),
+               Process(target=generate_ref_features_by_workbook_json, args=(20, 20)),
+               ]
     [p.start() for p in process]  # 开启了两个进程
-    [p.join() for p in process]   # 等待两个进程依次结束
+    [p.join() for p in process]  # 等待两个进程依次结束
 
 
 def para_neighbors_run():
-    process = [Process(target=generate_neighbors_features_by_workbook_json, args=(1,20)),
-        Process(target=generate_neighbors_features_by_workbook_json, args=(2,20)), 
-        Process(target=generate_neighbors_features_by_workbook_json, args=(3,20)),
-        Process(target=generate_neighbors_features_by_workbook_json, args=(4,20)), 
-        Process(target=generate_neighbors_features_by_workbook_json, args=(5,20)),
-        Process(target=generate_neighbors_features_by_workbook_json, args=(6,20)), 
-        Process(target=generate_neighbors_features_by_workbook_json, args=(7,20)),
-        Process(target=generate_neighbors_features_by_workbook_json, args=(8,20)), 
-        Process(target=generate_neighbors_features_by_workbook_json, args=(9,20)),
-        Process(target=generate_neighbors_features_by_workbook_json, args=(10,20)), 
-        Process(target=generate_neighbors_features_by_workbook_json, args=(11,20)),
-        Process(target=generate_neighbors_features_by_workbook_json, args=(12,20)), 
-        Process(target=generate_neighbors_features_by_workbook_json, args=(13,20)),
-        Process(target=generate_neighbors_features_by_workbook_json, args=(14,20)), 
-        Process(target=generate_neighbors_features_by_workbook_json, args=(15,20)),
-        Process(target=generate_neighbors_features_by_workbook_json, args=(16,20)), 
-        Process(target=generate_neighbors_features_by_workbook_json, args=(17,20)),
-        Process(target=generate_neighbors_features_by_workbook_json, args=(18,20)), 
-        Process(target=generate_neighbors_features_by_workbook_json, args=(19,20)), 
-        Process(target=generate_neighbors_features_by_workbook_json, args=(20,20)), 
-    ]
+    process = [Process(target=generate_neighbors_features_by_workbook_json, args=(1, 20)),
+               Process(target=generate_neighbors_features_by_workbook_json, args=(2, 20)),
+               Process(target=generate_neighbors_features_by_workbook_json, args=(3, 20)),
+               Process(target=generate_neighbors_features_by_workbook_json, args=(4, 20)),
+               Process(target=generate_neighbors_features_by_workbook_json, args=(5, 20)),
+               Process(target=generate_neighbors_features_by_workbook_json, args=(6, 20)),
+               Process(target=generate_neighbors_features_by_workbook_json, args=(7, 20)),
+               Process(target=generate_neighbors_features_by_workbook_json, args=(8, 20)),
+               Process(target=generate_neighbors_features_by_workbook_json, args=(9, 20)),
+               Process(target=generate_neighbors_features_by_workbook_json, args=(10, 20)),
+               Process(target=generate_neighbors_features_by_workbook_json, args=(11, 20)),
+               Process(target=generate_neighbors_features_by_workbook_json, args=(12, 20)),
+               Process(target=generate_neighbors_features_by_workbook_json, args=(13, 20)),
+               Process(target=generate_neighbors_features_by_workbook_json, args=(14, 20)),
+               Process(target=generate_neighbors_features_by_workbook_json, args=(15, 20)),
+               Process(target=generate_neighbors_features_by_workbook_json, args=(16, 20)),
+               Process(target=generate_neighbors_features_by_workbook_json, args=(17, 20)),
+               Process(target=generate_neighbors_features_by_workbook_json, args=(18, 20)),
+               Process(target=generate_neighbors_features_by_workbook_json, args=(19, 20)),
+               Process(target=generate_neighbors_features_by_workbook_json, args=(20, 20)),
+               ]
     [p.start() for p in process]  # 开启了两个进程
-    [p.join() for p in process]   # 等待两个进程依次结束
+    [p.join() for p in process]  # 等待两个进程依次结束
+
 
 def look_remove_formulas():
     with open("Formulas_77772sheets_mergerange_custom.json", 'r') as f:
@@ -2639,18 +2721,18 @@ def look_remove_formulas():
         found = False
         for item in sampled_file:
             if filename in item:
-                found=True
+                found = True
                 break
         if not found:
             continue
         # if not os.path.exists("../AnalyzeDV/remove_formulas_200/"+filename):
         #     continue
-        
+
         for r1c1 in formulas[filesheet]:
             # if 'SUM(' not in r1c1 and 'AVERAGE(' not in r1c1:
             #     continue
             # if len(r1c1) > 20:
-                # continue
+            # continue
             if 'AVERAGE(' not in r1c1:
                 continue
             for id_ in formulas[filesheet][r1c1]:
@@ -2662,20 +2744,21 @@ def look_remove_formulas():
                 print('fc', formulas[filesheet][r1c1][id_]['fc'])
             break
 
+
 def delete_no_func_formulas(thread_id, batch_num):
-    with open('Formula_77772_with_id.json','r') as f:
+    with open('Formula_77772_with_id.json', 'r') as f:
         formulas = json.load(f)
     with open('formula_token_2_template_id_custom.json', 'r') as f:
         formula_token_2_template_id = json.load(f)
     need_delete_id = [113, 71, 51, 134, 19, 459, 10, 84]
     result = []
-    batch_len = len(formulas)/batch_num
-    for index,formula in enumerate(formulas):
+    batch_len = len(formulas) / batch_num
+    for index, formula in enumerate(formulas):
         if thread_id != batch_num:
-            if(index <= batch_len * (thread_id - 1 ) or index > batch_len * thread_id):
+            if (index <= batch_len * (thread_id - 1) or index > batch_len * thread_id):
                 continue
         else:
-            if index <= batch_len * (thread_id - 1 ):
+            if index <= batch_len * (thread_id - 1):
                 continue
         print(index, len(formulas))
         filesheet = formula['filesheet'].split('/')[5]
@@ -2686,24 +2769,25 @@ def delete_no_func_formulas(thread_id, batch_num):
             continue
         result.append(formula)
     print('len(result', len(result))
-    with open("Formula_hasfunc_with_id.json",'w') as f:
-        json.dump(result,f)
+    with open("Formula_hasfunc_with_id.json", 'w') as f:
+        json.dump(result, f)
+
 
 def no_saved_filesheet():
     root_path = "/datadrive/projects/AnalyzeDV/origin_top10domain/"
     filelist = os.listdir(root_path)
-    
+
     all_res = []
-    for index,filename in enumerate(filelist):
+    for index, filename in enumerate(filelist):
         if 'origin_middle10domain_formulas' not in filename:
             continue
         print(index, len(filelist))
         batch_id = int(filename.split('.')[0].split('_')[-1])
-        
+
         path = root_path + filename
         if batch_id > 57:
             print('rm ' + str(batch_id))
-            os.system('rm '+path)
+            os.system('rm ' + path)
             continue
         print('load...')
         with open(path, 'r') as f:
@@ -2716,16 +2800,16 @@ def no_saved_filesheet():
 
 
 def generate_training_files():
-    with open("domain2num.json",'r') as f:
+    with open("domain2num.json", 'r') as f:
         domain2num = json.load(f)
-    with open("filename2domain.json",'r') as f:
+    with open("filename2domain.json", 'r') as f:
         filename2domain = json.load(f)
     res = []
     res1 = []
 
-    select_domain_num = int(len(domain2num)/10)
+    select_domain_num = int(len(domain2num) / 10)
     domian_list = []
-    for index,domain in enumerate(domain2num):
+    for index, domain in enumerate(domain2num):
         if index == 10:
             continue
         if len(domian_list) == select_domain_num and domain not in domian_list:
@@ -2744,49 +2828,56 @@ def generate_training_files():
     # with open('training_filenames.json', 'w') as f:
     #     json.dump(res1, f)
 
-def generate_one_before_features(filename, sheetname, row, col, source_root_path, saved_root_path, bert_dict=None, content_tem_dict=None):
+
+def generate_one_before_features(filename, sheetname, row, col, source_root_path, saved_root_path, bert_dict=None,
+                                 content_tem_dict=None):
     if bert_dict is None:
         bert_dict = {}
     if content_tem_dict is None:
         content_tem_dict = {}
     bert_model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
     formula_token = filename + '---' + sheetname + '---' + str(row) + '---' + str(col)
-    if not os.path.exists(saved_root_path + formula_token+'.npy'):
+    if not os.path.exists(saved_root_path + formula_token + '.npy'):
         with open(source_root_path + formula_token + '.json', 'r') as f:
             origin_feature = json.load(f)
-            feature_nparray = np.array(get_feature_vector_with_bert_keyw(origin_feature['sheetfeature'],content_tem_dict=content_tem_dict, bert_dict = bert_dict))
+            feature_nparray = np.array(
+                get_feature_vector_with_bert_keyw(origin_feature['sheetfeature'], content_tem_dict=content_tem_dict,
+                                                  bert_dict=bert_dict))
             np.save(saved_root_path + formula_token + '.npy', feature_nparray)
+
 
 def generate_refcell_before_features(bert_dict, content_tem_dict, thread_id, batch_num):
     bert_model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
     formula_tokens = os.listdir(root_path + 'refcell_json_features/')
     batch_len = len(formula_tokens) / batch_num
-    for index,formula_token_path in enumerate(formula_tokens):
-        formula_token = formula_token_path.replace(".json",'')
+    for index, formula_token_path in enumerate(formula_tokens):
+        formula_token = formula_token_path.replace(".json", '')
         if thread_id != batch_num:
-            if(index <= batch_len * (thread_id - 1 ) or index > batch_len * thread_id):
+            if (index <= batch_len * (thread_id - 1) or index > batch_len * thread_id):
                 continue
         else:
-            if index <= batch_len * (thread_id - 1 ):
+            if index <= batch_len * (thread_id - 1):
                 continuedemo
         print(index, len(formula_tokens))
         saved_root_path = root_path + 'before_features/'
         source_root_path = root_path + 'refcell_json_features/'
-        if not os.path.exists(saved_root_path + formula_token+'.npy'):
+        if not os.path.exists(saved_root_path + formula_token + '.npy'):
             try:
                 with open(source_root_path + formula_token_path, 'r') as f:
                     origin_feature = json.load(f)
-                    feature_nparray = np.array(get_feature_vector_with_bert_keyw(origin_feature['sheetfeature']),bert_dict=bert_dict, content_tem_dict = content_tem_dict)
+                    feature_nparray = np.array(get_feature_vector_with_bert_keyw(origin_feature['sheetfeature']),
+                                               bert_dict=bert_dict, content_tem_dict=content_tem_dict)
                     np.save(saved_root_path + formula_token + '.npy', feature_nparray)
             except:
                 continue
+
 
 def generate_tile_before_features(bert_dict, content_tem_dict, thread_id, batch_num):
     bert_model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
     formula_tokens = os.listdir(root_path + 'tile_json_feaures/')
     batch_len = len(formula_tokens) / batch_num
-    for index,formula_token_path in enumerate(formula_tokens):
-        formula_token = formula_token_path.replace(".json",'')
+    for index, formula_token_path in enumerate(formula_tokens):
+        formula_token = formula_token_path.replace(".json", '')
         # if thread_id != batch_num:
         #     if(index <= batch_len * (thread_id - 1 ) or index > batch_len * thread_id):
         #         continue
@@ -2796,7 +2887,7 @@ def generate_tile_before_features(bert_dict, content_tem_dict, thread_id, batch_
         print(index, len(formula_tokens))
         saved_root_path = root_path + 'tile_before_features/'
         source_root_path = root_path + 'tile_json_feaures/'
-        if not os.path.exists(saved_root_path + formula_token+'.npy'):
+        if not os.path.exists(saved_root_path + formula_token + '.npy'):
             try:
                 with open(source_root_path + formula_token_path, 'r') as f:
                     origin_feature = json.load(f)
@@ -2805,100 +2896,104 @@ def generate_tile_before_features(bert_dict, content_tem_dict, thread_id, batch_
             except:
                 continue
 
+
 def generate_similarsheet_before_features(bert_dict, content_tem_dict, thread_id, batch_num):
     bert_model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
     formula_tokens = os.listdir(root_path + 'sheets_json_feaures/')
     batch_len = len(formula_tokens) / batch_num
-    for index,formula_token_path in enumerate(formula_tokens):
-        formula_token = formula_token_path.replace(".json",'')
+    for index, formula_token_path in enumerate(formula_tokens):
+        formula_token = formula_token_path.replace(".json", '')
         if thread_id != batch_num:
-            if(index <= batch_len * (thread_id - 1 ) or index > batch_len * thread_id):
+            if (index <= batch_len * (thread_id - 1) or index > batch_len * thread_id):
                 continue
         else:
-            if index <= batch_len * (thread_id - 1 ):
+            if index <= batch_len * (thread_id - 1):
                 continue
         # print(index, len(formula_tokens))
         saved_root_path = root_path + 'similarsheet_before_features/'
         source_root_path = root_path + 'sheets_json_feaures/'
-        if not os.path.exists(saved_root_path + formula_token+'.npy'):
+        if not os.path.exists(saved_root_path + formula_token + '.npy'):
             print('not exists')
             print('formula_token', formula_token)
             with open(source_root_path + formula_token_path, 'r') as f:
                 try:
                     origin_feature = json.load(f)
-                
+
                     feature_nparray = np.array(get_feature_vector_with_bert_keyw(origin_feature['sheetfeature']))
                     np.save(saved_root_path + formula_token + '.npy', feature_nparray)
                 except:
                     print('load fail')
                     continue
 
+
 def para_gen_similarsheet_before_feature():
     with open('/datadrive/data/bert_dict/bert_dict.json', 'r') as f:
         bert_dict = json.load(f)
-    
+
     with open("json_data/content_temp_dict_1.json", 'r') as f:
         content_tem_dict = json.load(f)
 
-    process = [Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 1,20)),
-               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 2,20)), 
-               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 3,20)),
-               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 4,20)), 
-               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 5,20)),
-               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 6,20)), 
-               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 7,20)),
-               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 8,20)), 
-               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 9,20)),
-               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 10,20)), 
-               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 11,20)),
-               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 12,20)), 
-               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 13,20)),
-               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 14,20)), 
-               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 15,20)),
-               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 16,20)), 
-               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 17,20)),
-               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 18,20)), 
-               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 9,20)), 
-               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 20,20)), 
-            ]
+    process = [Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 1, 20)),
+               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 2, 20)),
+               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 3, 20)),
+               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 4, 20)),
+               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 5, 20)),
+               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 6, 20)),
+               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 7, 20)),
+               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 8, 20)),
+               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 9, 20)),
+               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 10, 20)),
+               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 11, 20)),
+               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 12, 20)),
+               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 13, 20)),
+               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 14, 20)),
+               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 15, 20)),
+               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 16, 20)),
+               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 17, 20)),
+               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 18, 20)),
+               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 9, 20)),
+               Process(target=generate_similarsheet_before_features, args=(bert_dict, content_tem_dict, 20, 20)),
+               ]
     [p.start() for p in process]  # 开启了两个进程
-    [p.join() for p in process]   # 等待两个进程依次结束
+    [p.join() for p in process]  # 等待两个进程依次结束
+
 
 def para_gen_before_feature():
     with open('/datadrive/data/bert_dict/bert_dict.json', 'r') as f:
         bert_dict = json.load(f)
-    
+
     with open("json_data/content_temp_dict_1.json", 'r') as f:
         content_tem_dict = json.load(f)
 
-    process = [Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 1,20)),
-               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 2,20)), 
-               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 3,20)),
-               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 4,20)), 
-               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 5,20)),
-               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 6,20)), 
-               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 7,20)),
-               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 8,20)), 
-               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 9,20)),
-               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 10,20)), 
-               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 11,20)),
-               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 12,20)), 
-               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 13,20)),
-               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 14,20)), 
-               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 15,20)),
-               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 16,20)), 
-               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 17,20)),
-               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 18,20)), 
-               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 9,20)), 
-               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 20,20)), 
-            ]
+    process = [Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 1, 20)),
+               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 2, 20)),
+               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 3, 20)),
+               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 4, 20)),
+               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 5, 20)),
+               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 6, 20)),
+               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 7, 20)),
+               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 8, 20)),
+               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 9, 20)),
+               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 10, 20)),
+               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 11, 20)),
+               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 12, 20)),
+               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 13, 20)),
+               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 14, 20)),
+               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 15, 20)),
+               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 16, 20)),
+               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 17, 20)),
+               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 18, 20)),
+               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 9, 20)),
+               Process(target=generate_before_features, args=(bert_dict, content_tem_dict, 20, 20)),
+               ]
     [p.start() for p in process]  # 开启了两个进程
-    [p.join() for p in process]   # 等待两个进程依次结束
+    [p.join() for p in process]  # 等待两个进程依次结束
+
 
 def para_gen_tile_before_feature():
     with open('/datadrive/data/bert_dict/bert_dict.json', 'r') as f:
         bert_dict = json.load(f)
-    
+
     with open("json_data/content_temp_dict_1.json", 'r') as f:
         content_tem_dict = json.load(f)
 
@@ -2925,40 +3020,44 @@ def para_gen_tile_before_feature():
     #         ]
     # [p.start() for p in process]  # 开启了两个进程
     # [p.join() for p in process]   # 等待两个进程依次结束
-    generate_tile_before_features(bert_dict, content_tem_dict, 1,1)
+    generate_tile_before_features(bert_dict, content_tem_dict, 1, 1)
+
 
 def para_gen_refcell_before_feature():
     with open('/datadrive/data/bert_dict/bert_dict.json', 'r') as f:
         bert_dict = json.load(f)
-    
+
     with open("json_data/content_temp_dict_1.json", 'r') as f:
         content_tem_dict = json.load(f)
 
-    process = [Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 1,20)),
-               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 2,20)), 
-               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 3,20)),
-               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 4,20)), 
-               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 5,20)),
-               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 6,20)), 
-               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 7,20)),
-               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 8,20)), 
-               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 9,20)),
-               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 10,20)), 
-               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 11,20)),
-               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 12,20)), 
-               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 13,20)),
-               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 14,20)), 
-               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 15,20)),
-               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 16,20)), 
-               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 17,20)),
-               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 18,20)), 
-               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 9,20)), 
-               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 20,20)), 
-            ]
+    process = [Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 1, 20)),
+               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 2, 20)),
+               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 3, 20)),
+               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 4, 20)),
+               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 5, 20)),
+               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 6, 20)),
+               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 7, 20)),
+               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 8, 20)),
+               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 9, 20)),
+               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 10, 20)),
+               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 11, 20)),
+               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 12, 20)),
+               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 13, 20)),
+               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 14, 20)),
+               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 15, 20)),
+               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 16, 20)),
+               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 17, 20)),
+               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 18, 20)),
+               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 9, 20)),
+               Process(target=generate_refcell_before_features, args=(bert_dict, content_tem_dict, 20, 20)),
+               ]
     [p.start() for p in process]  # 开启了两个进程
-    [p.join() for p in process]   # 等待两个进程依次结束
+    [p.join() for p in process]  # 等待两个进程依次结束
 
-def save_sheet_bert_feature_for_77721(thread_id, batch_num, save_path=root_path + 'sheetfeature2afterfeature/', model_path = "/datadrive-2/data/l2_model/4_1", load_path = root_path+'similarsheet_before_features/' ):#load_path = 'deal00formula2beforebertfeature'):model_path = '196model/cnn_new_dynamic_triplet_margin_1_3_12'
+
+def save_sheet_bert_feature_for_77721(thread_id, batch_num, save_path=root_path + 'sheetfeature2afterfeature/',
+                                      model_path="/datadrive-2/data/l2_model/4_1",
+                                      load_path=root_path + 'similarsheet_before_features/'):  # load_path = 'deal00formula2beforebertfeature'):model_path = '196model/cnn_new_dynamic_triplet_margin_1_3_12'
     # e2e = End2End()
     # if model_path:
     model = torch.load(model_path)
@@ -2968,34 +3067,34 @@ def save_sheet_bert_feature_for_77721(thread_id, batch_num, save_path=root_path 
     filenames = os.listdir(load_path)
     # with open('res197.json', 'r') as f:
     #     res197 = json.load(f)
-    
-    saved_filenames1 = [i.replace('.npy','.json') for i in os.listdir(save_path)]
+
+    saved_filenames1 = [i.replace('.npy', '.json') for i in os.listdir(save_path)]
     # saved_filenames = os.listdir('deal00formula2afterbertfeature')
     saved_filenames1 = os.listdir(save_path)
-    filenames = list(set(filenames) - set(saved_filenames1)) 
+    filenames = list(set(filenames) - set(saved_filenames1))
     # filenames = res197
     print('filenames', len(filenames))
     filenames.sort()
     print('saved_filenames1', len(saved_filenames1))
-    
+
     filename_list = []
     feature_list = []
-    batch_len = len(filenames)/batch_num
-    for index,filename in enumerate(filenames):
+    batch_len = len(filenames) / batch_num
+    for index, filename in enumerate(filenames):
         # print(index, batch_len * (thread_id - 1 ), batch_len * (thread_id ))
         if thread_id != batch_num:
-            if(index <= batch_len * (thread_id - 1 ) or index > batch_len * thread_id):
+            if (index <= batch_len * (thread_id - 1) or index > batch_len * thread_id):
                 continue
         else:
-            if(index <= batch_len * (thread_id - 1 )):
+            if (index <= batch_len * (thread_id - 1)):
                 continue
-    
+
         print(index, len(filenames))
 
         # if filename.replace('.json', '.npy') in saved_filenames1:
         #     continue
         print("save_path + filename")
-        if os.path.exists(save_path + filename.replace('.json','') + '.npy'):
+        if os.path.exists(save_path + filename.replace('.json', '') + '.npy'):
             print('exists.......')
             continue
         # print(filename)
@@ -3007,7 +3106,7 @@ def save_sheet_bert_feature_for_77721(thread_id, batch_num, save_path=root_path 
         #         origin_feature = json.load(f)
         #     # print('origin_feature', origin_feature)
         #     print(origin_feature.keys())
-            
+
         #     # print(self.get_feature_vector_with_bert(origin_feature['sheetfeature']))
         #     print('transform to np array....')
         #     feature_nparray = np.array(e2e.get_feature_vector_with_bert_keyw(origin_feature['sheetfeature']))
@@ -3017,24 +3116,27 @@ def save_sheet_bert_feature_for_77721(thread_id, batch_num, save_path=root_path 
         #     feature = res.reshape(1,100,10,399)
         #     np.save(load_path + '/' + filename.replace('.json',''), feature)
         print("filename", filename)
-        feature_nparray = np.load(load_path  + filename.replace('.json','.npy'))
-        feature_nparray = feature_nparray.reshape(1,100,10,399)
+        feature_nparray = np.load(load_path + filename.replace('.json', '.npy'))
+        feature_nparray = feature_nparray.reshape(1, 100, 10, 399)
         model.eval()
 
         feature_nparray = torch.DoubleTensor(feature_nparray)
         feature_nparray = Variable(feature_nparray).to(torch.float32)
         feature_nparray = model(feature_nparray).detach().numpy()
         print('after model predict....')
-            # print('feature_list', feature_list)
-        np.save(save_path + filename.replace('.json','') + '.npy', feature_nparray)
+        # print('feature_list', feature_list)
+        np.save(save_path + filename.replace('.json', '') + '.npy', feature_nparray)
 
-def save_bert_feature_for_77721(thread_id, batch_num, save_path=root_path + 'afterfeature/', model_path = '/datadrive-2/data/l2_model/4_1', load_path = root_path+'before_features/' ):#load_path = 'deal00formula2beforebertfeature'):
-# def save_bert_feature_for_77721(thread_id, batch_num, save_path=root_path + 'tile_after_features/', model_path = '196model/cnn_new_dynamic_triplet_margin_1_3_12', load_path = root_path+'tile_before_features/' ):#load_path = 'deal00formula2beforebertfeature'):
-# def save_bert_feature_for_77721(thread_id, batch_num, save_path=root_path + 'refcell_after_features/', model_path = '196model/cnn_new_dynamic_triplet_margin_1_3_12', load_path = root_path+'refcell_before_features/' ):#load_path = 'deal00formula2beforebertfeature'):
-# def save_bert_feature_for_77721(thread_id, batch_num, save_path=root_path + 'demo_after_features/', model_path = '196model/cnn_new_dynamic_triplet_margin_1_3_12', load_path = root_path+'demo_before_features/' ):#load_path = 'deal00formula2beforebertfeature'):
+
+def save_bert_feature_for_77721(thread_id, batch_num, save_path=root_path + 'after_feature/',
+                                model_path='/datadrive-2/data/l2_model/4_1',
+                                load_path=root_path + 'before_features/'):  # load_path = 'deal00formula2beforebertfeature'):
+    # def save_bert_feature_for_77721(thread_id, batch_num, save_path=root_path + 'tile_after_features/', model_path = '196model/cnn_new_dynamic_triplet_margin_1_3_12', load_path = root_path+'tile_before_features/' ):#load_path = 'deal00formula2beforebertfeature'):
+    # def save_bert_feature_for_77721(thread_id, batch_num, save_path=root_path + 'refcell_after_features/', model_path = '196model/cnn_new_dynamic_triplet_margin_1_3_12', load_path = root_path+'refcell_before_features/' ):#load_path = 'deal00formula2beforebertfeature'):
+    # def save_bert_feature_for_77721(thread_id, batch_num, save_path=root_path + 'demo_after_features/', model_path = '196model/cnn_new_dynamic_triplet_margin_1_3_12', load_path = root_path+'demo_before_features/' ):#load_path = 'deal00formula2beforebertfeature'):
     # model1_middle10domain_formula2afterfeature
     # e2e = End2End()
-    
+
     # if model_path:
     model = torch.load(model_path)
     # with open('need_rerun_list.json','r') as f:
@@ -3043,36 +3145,36 @@ def save_bert_feature_for_77721(thread_id, batch_num, save_path=root_path + 'aft
     filenames = os.listdir(load_path)
     # with open('res197.json', 'r') as f:
     #     res197 = json.load(f)
-    
+
     # saved_filenames1 = [i.replace('.npy','.json') for i in os.listdir(save_path)]
     # saved_filenames = os.listdir('deal00formula2afterbertfeature')
     saved_filenames1 = os.listdir(save_path)
     print('before filenames', len(filenames))
-    filenames = list(set(filenames) - set(saved_filenames1)) 
+    filenames = list(set(filenames) - set(saved_filenames1))
     # filenames = res197
     print('after filenames', len(filenames))
     filenames.sort()
     print('saved_filenames1', len(saved_filenames1))
-    
+
     filename_list = []
     feature_list = []
-    batch_len = len(filenames)/batch_num
+    batch_len = len(filenames) / batch_num
     # print(os.path.exists('/datadrive-2/data/fortune500_test/demo_tile_features/234679781916000373063272744719263521823-8054.ddr3-phy-calc-v11-for-1600.xlsx---PHY CALC---101---1.json'))
     # print(os.path.exists('/datadrive-2/data/fortune500_test/demo_tile_features/234679781916000373063272744719263521823-8054.ddr3-phy-calc-v11-for-1600.xlsx---PHY CALC---201---1.json'))
     # print(os.path.exists(load_path + '234679781916000373063272744719263521823-8054.ddr3-phy-calc-v11-for-1600.xlsx---PHY CALC---101---1' + '.npy'))
     # print(os.path.exists(load_path + '234679781916000373063272744719263521823-8054.ddr3-phy-calc-v11-for-1600.xlsx---PHY CALC---201---1' + '.npy'))
     # print(os.path.exists(save_path + '234679781916000373063272744719263521823-8054.ddr3-phy-calc-v11-for-1600.xlsx---PHY CALC---101---1' + '.npy'))
     # print(os.path.exists(save_path + '234679781916000373063272744719263521823-8054.ddr3-phy-calc-v11-for-1600.xlsx---PHY CALC---201---1' + '.npy'))
-    
-    for index,filename in enumerate(filenames):
-        print(index, batch_len * (thread_id - 1 ), batch_len * (thread_id ))
+
+    for index, filename in enumerate(filenames):
+        print(index, batch_len * (thread_id - 1), batch_len * (thread_id))
         if thread_id != batch_num:
-            if(index <= batch_len * (thread_id - 1 ) or index > batch_len * thread_id):
+            if (index <= batch_len * (thread_id - 1) or index > batch_len * thread_id):
                 continue
         else:
-            if(index <= batch_len * (thread_id - 1 )):
+            if (index <= batch_len * (thread_id - 1)):
                 continue
-    
+
         print(index, len(filenames))
 
         # if filename.replace('.json', '.npy') in saved_filenames1:
@@ -3081,7 +3183,7 @@ def save_bert_feature_for_77721(thread_id, batch_num, save_path=root_path + 'aft
             print('exists.......')
             continue
         # if filename != '234679781916000373063272744719263521823-8054.ddr3-phy-calc-v11-for-1600.xlsx---PHY CALC---201---1.npy':
-            # continue
+        # continue
         # print(filename)
         # print('load origin feature....')
         # if not os.path.exists(load_path + '/' + filename.replace('.json','.npy')):
@@ -3091,7 +3193,7 @@ def save_bert_feature_for_77721(thread_id, batch_num, save_path=root_path + 'aft
         #         origin_feature = json.load(f)
         #     # print('origin_feature', origin_feature)
         #     print(origin_feature.keys())
-            
+
         #     # print(self.get_feature_vector_with_bert(origin_feature['sheetfeature']))
         #     print('transform to np array....')
         #     feature_nparray = np.array(e2e.get_feature_vector_with_bert_keyw(origin_feature['sheetfeature']))
@@ -3102,11 +3204,11 @@ def save_bert_feature_for_77721(thread_id, batch_num, save_path=root_path + 'aft
         #     np.save(load_path + '/' + filename.replace('.json',''), feature)
         start_time = time.time()
         print("filename", filename)
-        
-        feature_nparray = np.load(load_path  + filename.replace('.json','.npy'))
+
+        feature_nparray = np.load(load_path + filename.replace('.json', '.npy'))
         temp_time1 = time.time()
         print('load time:', temp_time1 - start_time)
-        feature_nparray = feature_nparray.reshape(1,100,10,399)
+        feature_nparray = feature_nparray.reshape(1, 100, 10, 399)
         temp_time2 = time.time()
         print('reshape time:', temp_time2 - temp_time1)
         model.eval()
@@ -3115,10 +3217,10 @@ def save_bert_feature_for_77721(thread_id, batch_num, save_path=root_path + 'aft
         feature_nparray = Variable(feature_nparray).to(torch.float32)
         feature_nparray = model(feature_nparray).detach().numpy()
         print('after model predict....')
-            # print('feature_list', feature_list)
+        # print('feature_list', feature_list)
         end_time = time.time()
         print(end_time - start_time)
-           
+
         np.save(save_path + filename, feature_nparray)
         with open(root_path + 'after_time/' + filename.replace(".npy", '.json'), 'w') as f:
             json.dump({'time': end_time - start_time}, f)
@@ -3128,57 +3230,59 @@ def save_bert_feature_for_77721(thread_id, batch_num, save_path=root_path + 'aft
 
 def para_sheet_features_save_after():
     process = [
-        Process(target=save_sheet_bert_feature_for_77721, args=(1,20)),
-        Process(target=save_sheet_bert_feature_for_77721, args=(2,20)), 
-        Process(target=save_sheet_bert_feature_for_77721, args=(3,20)),
-        Process(target=save_sheet_bert_feature_for_77721, args=(4,20)), 
-        Process(target=save_sheet_bert_feature_for_77721, args=(5,20)),
-        Process(target=save_sheet_bert_feature_for_77721, args=(6,20)), 
-        Process(target=save_sheet_bert_feature_for_77721, args=(7,20)),
-        Process(target=save_sheet_bert_feature_for_77721, args=(8,20)), 
-        Process(target=save_sheet_bert_feature_for_77721, args=(9,20)),
-        Process(target=save_sheet_bert_feature_for_77721, args=(10,20)), 
-        Process(target=save_sheet_bert_feature_for_77721, args=(11,20)),
-        Process(target=save_sheet_bert_feature_for_77721, args=(12,20)), 
-        Process(target=save_sheet_bert_feature_for_77721,args=(13,20)),
-        Process(target=save_sheet_bert_feature_for_77721, args=(14,20)), 
-        Process(target=save_sheet_bert_feature_for_77721, args=(15,20)),
-        Process(target=save_sheet_bert_feature_for_77721, args=(16,20)), 
-        Process(target=save_sheet_bert_feature_for_77721, args=(17,20)),
-        Process(target=save_sheet_bert_feature_for_77721, args=(18,20)), 
-        Process(target=save_sheet_bert_feature_for_77721, args=(19,20)), 
-        Process(target=save_sheet_bert_feature_for_77721, args=(20,20)), 
+        Process(target=save_sheet_bert_feature_for_77721, args=(1, 20)),
+        Process(target=save_sheet_bert_feature_for_77721, args=(2, 20)),
+        Process(target=save_sheet_bert_feature_for_77721, args=(3, 20)),
+        Process(target=save_sheet_bert_feature_for_77721, args=(4, 20)),
+        Process(target=save_sheet_bert_feature_for_77721, args=(5, 20)),
+        Process(target=save_sheet_bert_feature_for_77721, args=(6, 20)),
+        Process(target=save_sheet_bert_feature_for_77721, args=(7, 20)),
+        Process(target=save_sheet_bert_feature_for_77721, args=(8, 20)),
+        Process(target=save_sheet_bert_feature_for_77721, args=(9, 20)),
+        Process(target=save_sheet_bert_feature_for_77721, args=(10, 20)),
+        Process(target=save_sheet_bert_feature_for_77721, args=(11, 20)),
+        Process(target=save_sheet_bert_feature_for_77721, args=(12, 20)),
+        Process(target=save_sheet_bert_feature_for_77721, args=(13, 20)),
+        Process(target=save_sheet_bert_feature_for_77721, args=(14, 20)),
+        Process(target=save_sheet_bert_feature_for_77721, args=(15, 20)),
+        Process(target=save_sheet_bert_feature_for_77721, args=(16, 20)),
+        Process(target=save_sheet_bert_feature_for_77721, args=(17, 20)),
+        Process(target=save_sheet_bert_feature_for_77721, args=(18, 20)),
+        Process(target=save_sheet_bert_feature_for_77721, args=(19, 20)),
+        Process(target=save_sheet_bert_feature_for_77721, args=(20, 20)),
     ]
     [p.start() for p in process]  # 开启了两个进程
-    [p.join() for p in process]   # 等待两个进程依次结束
+    [p.join() for p in process]  # 等待两个进程依次结束
+
 
 def para_save_after():
-    process = [Process(target=save_bert_feature_for_77721, args=(1,20)),
-        Process(target=save_bert_feature_for_77721, args=(2,20)), 
-        Process(target=save_bert_feature_for_77721, args=(3,20)),
-        Process(target=save_bert_feature_for_77721, args=(4,20)), 
-        Process(target=save_bert_feature_for_77721, args=(5,20)),
-        Process(target=save_bert_feature_for_77721, args=(6,20)), 
-        Process(target=save_bert_feature_for_77721, args=(7,20)),
-        Process(target=save_bert_feature_for_77721, args=(8,20)), 
-        Process(target=save_bert_feature_for_77721, args=(9,20)),
-        Process(target=save_bert_feature_for_77721, args=(10,20)), 
-        Process(target=save_bert_feature_for_77721, args=(11,20)),
-        Process(target=save_bert_feature_for_77721, args=(12,20)), 
-        Process(target=save_bert_feature_for_77721,args=(13,20)),
-        Process(target=save_bert_feature_for_77721, args=(14,20)), 
-        Process(target=save_bert_feature_for_77721, args=(15,20)),
-        Process(target=save_bert_feature_for_77721, args=(16,20)), 
-        Process(target=save_bert_feature_for_77721, args=(17,20)),
-        Process(target=save_bert_feature_for_77721, args=(18,20)), 
-        Process(target=save_bert_feature_for_77721, args=(19,20)), 
-        Process(target=save_bert_feature_for_77721, args=(20,20)), 
-    ]
+    process = [Process(target=save_bert_feature_for_77721, args=(1, 20)),
+               Process(target=save_bert_feature_for_77721, args=(2, 20)),
+               Process(target=save_bert_feature_for_77721, args=(3, 20)),
+               Process(target=save_bert_feature_for_77721, args=(4, 20)),
+               Process(target=save_bert_feature_for_77721, args=(5, 20)),
+               Process(target=save_bert_feature_for_77721, args=(6, 20)),
+               Process(target=save_bert_feature_for_77721, args=(7, 20)),
+               Process(target=save_bert_feature_for_77721, args=(8, 20)),
+               Process(target=save_bert_feature_for_77721, args=(9, 20)),
+               Process(target=save_bert_feature_for_77721, args=(10, 20)),
+               Process(target=save_bert_feature_for_77721, args=(11, 20)),
+               Process(target=save_bert_feature_for_77721, args=(12, 20)),
+               Process(target=save_bert_feature_for_77721, args=(13, 20)),
+               Process(target=save_bert_feature_for_77721, args=(14, 20)),
+               Process(target=save_bert_feature_for_77721, args=(15, 20)),
+               Process(target=save_bert_feature_for_77721, args=(16, 20)),
+               Process(target=save_bert_feature_for_77721, args=(17, 20)),
+               Process(target=save_bert_feature_for_77721, args=(18, 20)),
+               Process(target=save_bert_feature_for_77721, args=(19, 20)),
+               Process(target=save_bert_feature_for_77721, args=(20, 20)),
+               ]
     [p.start() for p in process]  # 开启了两个进程
-    [p.join() for p in process]   # 等待两个进程依次结束
+    [p.join() for p in process]  # 等待两个进程依次结束
+
 
 def look_sheetname2num():
-    with open("Formulas_top10domain_with_id.json",'r') as f:
+    with open("Formulas_top10domain_with_id.json", 'r') as f:
         res = json.load(f)
 
     top10domain_sheetname2num = {}
@@ -3192,7 +3296,7 @@ def look_sheetname2num():
             top10domain_r1c12num[r1c1] = 0
         top10domain_sheetname2num[sheetname] += 1
         top10domain_r1c12num[r1c1] += 1
-    
+
     top10domain_sheetname2num = sorted(top10domain_sheetname2num.items(), key=lambda x: x[1], reverse=True)
     top10domain_r1c12num = sorted(top10domain_r1c12num.items(), key=lambda x: x[1], reverse=True)
     new_top10domain_sheetname2num = {}
@@ -3207,11 +3311,11 @@ def look_sheetname2num():
     with open('/datadrive-2/data/top10domain_test/top10domain_r1c12num.json', 'w') as f:
         json.dump(new_top10domain_r1c12num, f)
 
-def generate_test_formulas():
 
+def generate_test_formulas():
     with open("Formulas_middle10domain_with_id.json", 'r') as f:
-    #     formulas = json.load(f)
-    # with open("Formulas_fortune500_with_id.json", 'r') as f:
+        #     formulas = json.load(f)
+        # with open("Formulas_fortune500_with_id.json", 'r') as f:
         formulas = json.load(f)
 
     new_formulas = []
@@ -3221,7 +3325,7 @@ def generate_test_formulas():
         r1c1 = formula['r1c1']
         if sheetname not in sheetname2num:
             sheetname2num[sheetname] = 0
-        
+
         if sheetname2num[sheetname] > 100:
             continue
 
@@ -3229,37 +3333,52 @@ def generate_test_formulas():
         sheetname2num[sheetname] += 1
 
     with open("Formulas_test_middle10domain_with_id.json", 'w') as f:
-    #     json.dump(new_formulas,f)
-    # with open("Formulas_test_fortune500_with_id.json", 'w') as f:
-        json.dump(new_formulas,f)
+        #     json.dump(new_formulas,f)
+        # with open("Formulas_test_fortune500_with_id.json", 'w') as f:
+        json.dump(new_formulas, f)
 
     # with open("Formulas_test_fortune500_with_id.json", 'r') as f:
     with open("Formulas_test_middle10domain_with_id.json", 'r') as f:
         new_formulas = json.load(f)
     print(len(new_formulas))
 
-    for index,formula in enumerate(new_formulas):
+    for index, formula in enumerate(new_formulas):
         print(index, len(new_formulas))
-        formula_token = formula['filesheet'].split('/')[-1] + '---' +str(formula['fr']) + '---' + str(formula['fc'])
+        formula_token = formula['filesheet'].split('/')[-1] + '---' + str(formula['fr']) + '---' + str(formula['fc'])
         # if os.path.exists(root_path + 'model1_middle10domain_formula2afterfeature_test/' + formula_token +'.npy'):
         #     continue
-        if os.path.exists(root_path + 'afterfeature_test/' + formula_token +'.npy'):
+        if os.path.exists(root_path + 'after_feature_test/' + formula_token + '.npy'):
             continue
-        # if index <= 0:
-        #     continue
-        if os.path.exists(root_path + 'afterfeature/' + formula_token + '.npy.npy'):
-            shutil.move(root_path + 'afterfeature/' + formula_token + '.npy.npy', root_path + 'afterfeature/' + formula_token +'.npy')
-        if not os.path.exists(root_path + 'afterfeature/' + formula_token + '.npy'):
+
+        if os.path.exists(root_path + 'after_feature/' + formula_token + '.npy.npy'):
+            shutil.move(root_path + 'after_feature/' + formula_token + '.npy.npy',
+                        root_path + 'after_feature/' + formula_token + '.npy')
+        if not os.path.exists(root_path + 'after_feature/' + formula_token + '.npy'):
             print(formula_token)
             print('not exists')
             continue
-        
+
             # break
         # shutil.move(root_path + 'model1_top10domain_formula2afterfeature/' + formula_token + '.npy.npy', root_path + 'model1_top10domain_formula2afterfeature/' + formula_token +'.npy')
-        shutil.copy(root_path + 'afterfeature/' + formula_token + '.npy', root_path + 'afterfeature_test/' + formula_token +'.npy')
+        shutil.copy(root_path + 'after_feature/' + formula_token + '.npy',
+                    root_path + 'after_feature_test/' + formula_token + '.npy')
 
-def generate_demo_features(filename, sheetname, workbook_json, origin_row, origin_col, save_path, is_look=False, cross=False):
-    one_invalid_cell =  {
+
+def generate_demo_features(filename, sheetname, workbook_json, origin_row, origin_col, save_path, is_look=False,
+                           cross=False):
+    """
+    根据传入的参数从Workbook JSON文件中提取特定工作表和单元格的信息，并将结果保存为JSON文件。这些提取的信息包括背景颜色、宽度、高度、字体大小、字体颜色和单元格内容等。
+    :param filename:
+    :param sheetname:
+    :param workbook_json:
+    :param origin_row:
+    :param origin_col:
+    :param save_path:
+    :param is_look:
+    :param cross:
+    :return:
+    """
+    one_invalid_cell = {
         "background_color_r": 0,
         "background_color_g": 0,
         "background_color_b": 0,
@@ -3303,11 +3422,10 @@ def generate_demo_features(filename, sheetname, workbook_json, origin_row, origi
     def argb_to_rgb(value):
         value = value[-6:]
         lv = len(value)
-        return tuple(int(value[i:i+lv//3], 16) for i in range(0, lv, lv//3))
-
+        return tuple(int(value[i:i + lv // 3], 16) for i in range(0, lv, lv // 3))
 
     temp_start_time = time.time()
-    
+
     temp_end_time = time.time()
     # print('load workbook json:', temp_end_time-temp_start_time)
     sheet_jsons = workbook_json['Sheets']
@@ -3320,11 +3438,11 @@ def generate_demo_features(filename, sheetname, workbook_json, origin_row, origi
     res1 = {}
     temp_start_time = time.time()
     for sheet_json in sheet_jsons:
-        if sheet_json['Name'] == sheetname:  
+        if sheet_json['Name'] == sheetname:
             for row_json in sheet_json['Rows']:
                 if row_json['Row'] >= start_row and row_json['Row'] < end_row:
                     for cell in row_json['Cells']:
-                        
+
                         new_cell = copy.deepcopy(one_invalid_cell[0])
                         if 'Fill' in cell:
                             if 'ARGB' in cell['Fill']:
@@ -3335,14 +3453,14 @@ def generate_demo_features(filename, sheetname, workbook_json, origin_row, origi
                                 new_cell['background_color_b'] = b
                         if 'Width' in cell:
                             new_cell['width'] = cell['Width']
-                  
+
                         if 'Height' in cell:
                             new_cell['height'] = cell['Height']
                         elif 'Height' in row_json:
                             new_cell['height'] = row_json['Height']
                         elif 'DefaultHeight' in row_json:
                             new_cell['height'] = row_json['DefaultHeight']
-                    
+
                         if "Font" in cell:
                             if 'Size' in cell['Font']:
                                 new_cell['font_size'] = cell['Font']['Size']
@@ -3370,7 +3488,7 @@ def generate_demo_features(filename, sheetname, workbook_json, origin_row, origi
     temp_start_time = time.time()
     for row in range(start_row, start_row + 100):
         for col in range(start_col, start_col + 10):
-            
+
             if str(row) + '---' + str(col) in res1:
                 if is_look:
                     res1[str(row) + '---' + str(col)]['row'] = row
@@ -3397,33 +3515,33 @@ def generate_demo_features(filename, sheetname, workbook_json, origin_row, origi
     # print('second iter:', temp_end_time-temp_start_time)
 
     temp_end_time = time.time()
-    with open(save_path + filename + '---' + sheetname + '---' + str(origin_row) + '---' + str(origin_col) + ".json", 'w') as f:
+    with open(save_path + filename + '---' + sheetname + '---' + str(origin_row) + '---' + str(origin_col) + ".json",
+              'w') as f:
         # print('save:'+ save_path + filename + '---' + sheetname + '---' + str(origin_row) + '---' + str(origin_col) + ".json")
-        json.dump(res, f)   
-    # print('save:', temp_end_time-temp_start_time)
+        json.dump(res, f)
 
 
 def para_tile_demo_first(save_path=root_path + 'demo_tile_features/'):
-    refcell_list = os.listdir(root_path+'tile_rows')
+    refcell_list = os.listdir(root_path + 'tile_rows')
     filename2sheetname = {}
     for filesheet_json in refcell_list:
         # if filesheet_json != '25343295814095882086846077333982515046-ddr3-phy-calc-v11-for-1600.xlsx---PHY CALC.json':
         #     continue
-        filesheet = filesheet_json.replace('.json','')
+        filesheet = filesheet_json.replace('.json', '')
         filename = filesheet.split('---')[0]
         sheetname = filesheet.split('---')[1]
         if filename not in filename2sheetname:
             filename2sheetname[filename] = []
         filename2sheetname[filename].append(sheetname)
     filenames = list(filename2sheetname.keys())
+
     def batch_generate_tile_demo_features(thread_id, batch_num):
-        
-        batch_len = int(len(filenames)/batch_num)
+
+        batch_len = int(len(filenames) / batch_num)
         count = 0
 
         all_num = 56144857
 
-        
         for index, filename in enumerate(filenames):
             # if index != batch_num:
             #     if(index <= batch_len * (thread_id - 1 ) or index > batch_len * thread_id):
@@ -3434,11 +3552,11 @@ def para_tile_demo_first(save_path=root_path + 'demo_tile_features/'):
             print(index, len(filenames))
             # if filename != '25343295814095882086846077333982515046-ddr3-phy-calc-v11-for-1600.xlsx':
             #     continue
-            with open('../Demo/origin_fortune500_workbook_json/'+filename + '.json', 'r') as f:
+            with open('../Demo/origin_fortune500_workbook_json/' + filename + '.json', 'r') as f:
                 workbook_json = json.load(f)
             for sheetname in filename2sheetname[filename]:
                 # if sheetname != 'PHY CALC':
-                    # continue
+                # continue
                 filesheet = filename + '---' + sheetname
                 filesheet_json = filesheet + '.json'
                 print('filesheet_json', filesheet_json)
@@ -3455,51 +3573,54 @@ def para_tile_demo_first(save_path=root_path + 'demo_tile_features/'):
                     for col in tile_col:
                         # count += 1
                         # if os.path.exists(save_path + filename + '---' + sheetname + '---' + str(row) + '---' + str(col) + ".json"):
-                            # print('exist savepath.')
-                            # continue
+                        # print('exist savepath.')
+                        # continue
                         # print('save_path:', save_path + filename + '---' + sheetname + '---' + str(row) + '---' + str(col) + ".json")
                         # print("not exists")
                         start_time = time.time()
                         # print('start')
-                        generate_demo_features(filename, sheetname, workbook_json,row, col, save_path)
+                        generate_demo_features(filename, sheetname, workbook_json, row, col, save_path)
                         end_time = time.time()
         print('count', count)
-    batch_generate_tile_demo_features(1,1)
+
+    batch_generate_tile_demo_features(1, 1)
+
 
 def find_second_best():
-    refcell_list = os.listdir(root_path+'first_tile_res_new/')
+    refcell_list = os.listdir(root_path + 'first_tile_res_new/')
     filename2sheetname = {}
     for filesheet_json in refcell_list:
-        filesheet = filesheet_json.replace('.json','')
+        filesheet = filesheet_json.replace('.json', '')
         filename = filesheet.split('---')[0]
         sheetname = filesheet.split('---')[1]
         if filename not in filename2sheetname:
             filename2sheetname[filename] = []
         filename2sheetname[filename].append(sheetname)
     formula_filelists = os.listdir(root_path + 'test_refcell_position')
-    # print(len(formula_filelists)) 
+
+    # print(len(formula_filelists))
 
     def one_process(thread_id, batch_num):
-        batch_len = int(len(formula_filelists)/batch_num)
-        for index,formula_token_json in enumerate(formula_filelists):
+        batch_len = int(len(formula_filelists) / batch_num)
+        for index, formula_token_json in enumerate(formula_filelists):
             # if formula_token_json != "85896140957661697634686825738462695896-pg%26e-monthly-srac-b-20180110.xlsx---Option B---33---11.json":
-                # continue
+            # continue
             if index != batch_num:
-                if(index <= batch_len * (thread_id - 1 ) or index > batch_len * thread_id):
+                if (index <= batch_len * (thread_id - 1) or index > batch_len * thread_id):
                     continue
             else:
-                if index <= batch_len * (thread_id - 1 ):
+                if index <= batch_len * (thread_id - 1):
                     continue
             formula_token = formula_token_json.replace('.json', '')
             # if index <= 15:
-                # continue
+            # continue
             print(index, len(formula_filelists), formula_token)
             res = {}
             origin_file = formula_token.split('---')[0]
             origin_sheet = formula_token.split('---')[1]
             origin_filesheet = origin_file + '---' + origin_sheet
 
-            if os.path.exists(root_path + 'second_tile_res_new/' + formula_token  +'.npy'):
+            if os.path.exists(root_path + 'second_tile_res_new/' + formula_token + '.npy'):
                 continue
 
             if not os.path.exists(root_path + 'model1_res/' + formula_token_json):
@@ -3508,107 +3629,117 @@ def find_second_best():
             with open(root_path + 'model1_res/' + formula_token_json, 'r') as f:
                 mode1_res = json.load(f)
             found_filesheet = mode1_res[1].split('---')[0] + '---' + mode1_res[1].split('---')[1]
-            found_formula_token = mode1_res[1] 
+            found_formula_token = mode1_res[1]
             # print('mode1_res', mode1_res)
             # print('found_formula_token', found_formula_token)
-            
 
             if not os.path.exists(root_path + 'test_refcell_position/' + found_formula_token + '.json'):
                 print('not exists:test_refcell_position')
                 continue
-            with open(root_path + 'test_refcell_position/'+found_formula_token + '.json' , 'r') as f:
+            with open(root_path + 'test_refcell_position/' + found_formula_token + '.json', 'r') as f:
                 test_refcell_position = json.load(f)
             # print('found_formula_token', found_formula_token)
             # print('test_refcell_position', test_refcell_position)
-            
+
             # print('found_sheet', found_filesheet)
-        
+
             # print('test_refcell_position', test_refcell_position)
             for position in test_refcell_position:
                 ref_row = position['R']
                 ref_col = position['C']
                 # print(ref_row, ref_col)
-                if not os.path.exists(root_path + 'demo_after_features/' + found_filesheet + '---' + str(ref_row) + '---' + str(ref_col) + '.npy'):
+                if not os.path.exists(
+                        root_path + 'demo_after_features/' + found_filesheet + '---' + str(ref_row) + '---' + str(
+                            ref_col) + '.npy'):
                     print('not exists:demo_after_features')
                     continue
                 if not os.path.exists('/datadrive-2/data/fortune500_test/first_tile_res_new/' + formula_token + '.npy'):
                     print('not exists:first_tile_res_new')
                     continue
-                feature = np.load(root_path + 'demo_after_features/' + found_filesheet + '---' + str(ref_row) + '---' + str(ref_col) + '.npy', allow_pickle=True)
-                first_tile_res_new = np.load('/datadrive-2/data/fortune500_test/first_tile_res_new/' + formula_token + '.npy', allow_pickle=True).item()
+                feature = np.load(
+                    root_path + 'demo_after_features/' + found_filesheet + '---' + str(ref_row) + '---' + str(
+                        ref_col) + '.npy', allow_pickle=True)
+                first_tile_res_new = np.load(
+                    '/datadrive-2/data/fortune500_test/first_tile_res_new/' + formula_token + '.npy',
+                    allow_pickle=True).item()
                 # print('res', res)
-                if str(ref_row)+"---"+str(ref_col) not in first_tile_res_new:
-                    print('not in first', str(ref_row)+"---"+str(ref_col))
+                if str(ref_row) + "---" + str(ref_col) not in first_tile_res_new:
+                    print('not in first', str(ref_row) + "---" + str(ref_col))
                     continue
-                if 'best_row_col' not in first_tile_res_new[str(ref_row)+"---"+str(ref_col)]:
+                if 'best_row_col' not in first_tile_res_new[str(ref_row) + "---" + str(ref_col)]:
                     pritn('no best_row_col')
                     continue
-                best_row_col = first_tile_res_new[str(ref_row)+"---"+str(ref_col)]['best_row_col']
+                best_row_col = first_tile_res_new[str(ref_row) + "---" + str(ref_col)]['best_row_col']
                 # print('ref row col', str(ref_row)+"---"+str(ref_col))
                 best_row = int(best_row_col.split('---')[0])
                 best_col = int(best_row_col.split('---')[1])
-                res[str(ref_row) + '---' + str(ref_col)] = first_tile_res_new[str(ref_row)+"---"+str(ref_col)]
+                res[str(ref_row) + '---' + str(ref_col)] = first_tile_res_new[str(ref_row) + "---" + str(ref_col)]
                 # print("str(ref_row) + '---' + str(ref_col)", str(ref_row) + '---' + str(ref_col))
                 for row in range(best_row, best_row + 100):
                     for col in range(best_col, best_col + 10):
-                        if not os.path.exists(root_path + 'demo_after_features/' + origin_filesheet + '---' + str(row) + '---' + str(col) + '.npy'):
+                        if not os.path.exists(
+                                root_path + 'demo_after_features/' + origin_filesheet + '---' + str(row) + '---' + str(
+                                    col) + '.npy'):
                             # print("not exists:in demo_after_features")
                             continue
-                        other_feature = np.load(root_path + 'demo_after_features/' + origin_filesheet + '---' + str(row) + '---' + str(col) + '.npy', allow_pickle=True)
+                        other_feature = np.load(
+                            root_path + 'demo_after_features/' + origin_filesheet + '---' + str(row) + '---' + str(
+                                col) + '.npy', allow_pickle=True)
                         # print('other_feature', other_feature)
                         distance = euclidean(feature, other_feature)
                         # print('distance', distance)
-                        res[str(ref_row) + '---' + str(ref_col)][str(row) + '---'  + str(col)] = distance
-                        if distance  < res[str(ref_row) + '---' + str(ref_col)]['best_distance']:
+                        res[str(ref_row) + '---' + str(ref_col)][str(row) + '---' + str(col)] = distance
+                        if distance < res[str(ref_row) + '---' + str(ref_col)]['best_distance']:
                             res[str(ref_row) + '---' + str(ref_col)]['best_distance'] = distance
-                            res[str(ref_row) + '---' + str(ref_col)]['best_row_col'] = str(row) + '---' + str(col)     
-                        # print(row, col, distance)
+                            res[str(ref_row) + '---' + str(ref_col)]['best_row_col'] = str(row) + '---' + str(col)
+                            # print(row, col, distance)
                 # print('res', res)
                 # print('res', res.keys())
-                np.save(root_path + 'second_tile_res_new/' + formula_token  +'.npy', res)
+                np.save(root_path + 'second_tile_res_new/' + formula_token + '.npy', res)
             # break
+
     process = [
-        Process(target=one_process, args=(1,20)),
-        Process(target=one_process, args=(2,20)), 
-        Process(target=one_process, args=(3,20)),
-        Process(target=one_process, args=(4,20)), 
-        Process(target=one_process, args=(5,20)),
-        Process(target=one_process, args=(6,20)), 
-        Process(target=one_process, args=(7,20)),
-        Process(target=one_process, args=(8,20)), 
-        Process(target=one_process, args=(9,20)),
-        Process(target=one_process, args=(10,20)), 
-        Process(target=one_process, args=(11,20)),
-        Process(target=one_process, args=(12,20)), 
-        Process(target=one_process,args=(13,20)),
-        Process(target=one_process, args=(14,20)), 
-        Process(target=one_process, args=(15,20)),
-        Process(target=one_process, args=(16,20)), 
-        Process(target=one_process, args=(17,20)),
-        Process(target=one_process, args=(18,20)), 
-        Process(target=one_process, args=(19,20)), 
-        Process(target=one_process, args=(20,20)), 
+        Process(target=one_process, args=(1, 20)),
+        Process(target=one_process, args=(2, 20)),
+        Process(target=one_process, args=(3, 20)),
+        Process(target=one_process, args=(4, 20)),
+        Process(target=one_process, args=(5, 20)),
+        Process(target=one_process, args=(6, 20)),
+        Process(target=one_process, args=(7, 20)),
+        Process(target=one_process, args=(8, 20)),
+        Process(target=one_process, args=(9, 20)),
+        Process(target=one_process, args=(10, 20)),
+        Process(target=one_process, args=(11, 20)),
+        Process(target=one_process, args=(12, 20)),
+        Process(target=one_process, args=(13, 20)),
+        Process(target=one_process, args=(14, 20)),
+        Process(target=one_process, args=(15, 20)),
+        Process(target=one_process, args=(16, 20)),
+        Process(target=one_process, args=(17, 20)),
+        Process(target=one_process, args=(18, 20)),
+        Process(target=one_process, args=(19, 20)),
+        Process(target=one_process, args=(20, 20)),
     ]
     [p.start() for p in process]  # 开启了两个进程
-    [p.join() for p in process]   # 等待两个进程依次结束
+    [p.join() for p in process]  # 等待两个进程依次结束
+
 
 def naive_one_by_one(save_path=root_path + 'demo_tile_features/'):
-    refcell_list = os.listdir(root_path+'tile_rows/')
+    refcell_list = os.listdir(root_path + 'tile_rows/')
     filename2sheetname = {}
     for index, formula_token_file in enumerate(refcell_list):
         formula_token = formula_token_file.replace(".json", '')
 
         origin_filename = formula_token.split("---")[0]
         origin_sheetname = formula_token.split("---")[1]
-        
+
         if origin_filename not in filename2sheetname:
             filename2sheetname[origin_filename] = []
         filename2sheetname[origin_filename].append(origin_sheetname)
 
-            
     def batch_generate_tile_demo_features(thread_id, batch_num):
-        
-        batch_len = int(len(filename2sheetname)/batch_num)
+
+        batch_len = int(len(filename2sheetname) / batch_num)
         count = 0
 
         all_num = 56144857
@@ -3618,80 +3749,100 @@ def naive_one_by_one(save_path=root_path + 'demo_tile_features/'):
 
         for index, filename in enumerate(filename2sheetname):
             if index != batch_num:
-                if(index <= batch_len * (thread_id - 1 ) or index > batch_len * thread_id):
+                if (index <= batch_len * (thread_id - 1) or index > batch_len * thread_id):
                     continue
             else:
-                if index <= batch_len * (thread_id - 1 ):
+                if index <= batch_len * (thread_id - 1):
                     continue
             print(index, len(filename2sheetname))
-            with open('../Demo/origin_fortune500_workbook_json/'+filename + '.json', 'r') as f:
+            with open('../Demo/origin_fortune500_workbook_json/' + filename + '.json', 'r') as f:
                 workbook_json = json.load(f)
             for sheetname in filename2sheetname[filename]:
                 filesheet = filename + '---' + sheetname
                 start_time = time.time()
                 with open(root_path + 'tile_rows/' + filename + '---' + sheetname + '.json', 'r') as f:
-                    tile_rows = json.load(f) 
+                    tile_rows = json.load(f)
                 with open(root_path + 'tile_cols/' + filename + '---' + sheetname + '.json', 'r') as f:
-                    tile_cols = json.load(f) 
+                    tile_cols = json.load(f)
                 max_tile_row = tile_rows[-1]
                 max_tile_col = tile_cols[-1]
-        
+
                 extract_one_demo_feature_timelist = {}
-                for row in range(1, max_tile_row+100):
-                    for col in range(1, max_tile_col+10):
+                for row in range(1, max_tile_row + 100):
+                    for col in range(1, max_tile_col + 10):
                         count += 1
-                        if os.path.exists(save_path + filename + '---' + sheetname + '---' + str(row) + '---' + str(col) + ".json"):
+                        if os.path.exists(save_path + filename + '---' + sheetname + '---' + str(row) + '---' + str(
+                                col) + ".json"):
                             continue
                         tmp_stime = time.time()
-                        generate_demo_features(filename, sheetname, workbook_json,row, col, save_path)
+                        generate_demo_features(filename, sheetname, workbook_json, row, col, save_path)
                         tmp_etime = time.time()
-                        extract_one_demo_feature_timelist[str(row)+"---"+str(col)] = tmp_etime-tmp_stime
+                        extract_one_demo_feature_timelist[str(row) + "---" + str(col)] = tmp_etime - tmp_stime
                 end_time = time.time()
-                
+
                 time_result = {
                     'end2end': end_time - start_time,
                     'cell_level': extract_one_demo_feature_timelist
                 }
-                with open(root_path + "time_from_wbjson_to_demofeatures/" + filename + '---' + sheetname + '.json', 'w') as f:
+                with open(root_path + "time_from_wbjson_to_demofeatures/" + filename + '---' + sheetname + '.json',
+                          'w') as f:
                     json.dump(time_result, f)
-        print('count', count)    
-        
-    # batch_generate_tile_demo_features(1,1)
+        print('count', count)
+
+        # batch_generate_tile_demo_features(1,1)
+
     process = [
-        Process(target=batch_generate_tile_demo_features, args=(1,20)),
-        Process(target=batch_generate_tile_demo_features, args=(2,20)), 
-        Process(target=batch_generate_tile_demo_features, args=(3,20)),
-        Process(target=batch_generate_tile_demo_features, args=(4,20)), 
-        Process(target=batch_generate_tile_demo_features, args=(5,20)),
-        Process(target=batch_generate_tile_demo_features, args=(6,20)), 
-        Process(target=batch_generate_tile_demo_features, args=(7,20)),
-        Process(target=batch_generate_tile_demo_features, args=(8,20)), 
-        Process(target=batch_generate_tile_demo_features, args=(9,20)),
-        Process(target=batch_generate_tile_demo_features, args=(10,20)), 
-        Process(target=batch_generate_tile_demo_features, args=(11,20)),
-        Process(target=batch_generate_tile_demo_features, args=(12,20)), 
-        Process(target=batch_generate_tile_demo_features,args=(13,20)),
-        Process(target=batch_generate_tile_demo_features, args=(14,20)), 
-        Process(target=batch_generate_tile_demo_features, args=(15,20)),
-        Process(target=batch_generate_tile_demo_features, args=(16,20)), 
-        Process(target=batch_generate_tile_demo_features, args=(17,20)),
-        Process(target=batch_generate_tile_demo_features, args=(18,20)), 
-        Process(target=batch_generate_tile_demo_features, args=(19,20)), 
-        Process(target=batch_generate_tile_demo_features, args=(20,20)), 
+        Process(target=batch_generate_tile_demo_features, args=(1, 20)),
+        Process(target=batch_generate_tile_demo_features, args=(2, 20)),
+        Process(target=batch_generate_tile_demo_features, args=(3, 20)),
+        Process(target=batch_generate_tile_demo_features, args=(4, 20)),
+        Process(target=batch_generate_tile_demo_features, args=(5, 20)),
+        Process(target=batch_generate_tile_demo_features, args=(6, 20)),
+        Process(target=batch_generate_tile_demo_features, args=(7, 20)),
+        Process(target=batch_generate_tile_demo_features, args=(8, 20)),
+        Process(target=batch_generate_tile_demo_features, args=(9, 20)),
+        Process(target=batch_generate_tile_demo_features, args=(10, 20)),
+        Process(target=batch_generate_tile_demo_features, args=(11, 20)),
+        Process(target=batch_generate_tile_demo_features, args=(12, 20)),
+        Process(target=batch_generate_tile_demo_features, args=(13, 20)),
+        Process(target=batch_generate_tile_demo_features, args=(14, 20)),
+        Process(target=batch_generate_tile_demo_features, args=(15, 20)),
+        Process(target=batch_generate_tile_demo_features, args=(16, 20)),
+        Process(target=batch_generate_tile_demo_features, args=(17, 20)),
+        Process(target=batch_generate_tile_demo_features, args=(18, 20)),
+        Process(target=batch_generate_tile_demo_features, args=(19, 20)),
+        Process(target=batch_generate_tile_demo_features, args=(20, 20)),
     ]
 
     [p.start() for p in process]  # 开启了两个进程
-    [p.join() for p in process]   # 等待两个进程依次结束
+    [p.join() for p in process]  # 等待两个进程依次结束
 
 
-def generate_view_json(filename, sheetname, row, col, workbook_feature_path, save_path=root_path + 'demo_tile_features_look/', cross=False):
-    with open(workbook_feature_path + filename + '.json', 'r') as f: 
+# class GenerateTool:
+#     def __init__(self):
+#         self.root_path = '../data_drive/data_two/'
+#         self.demo_path = 'demo_tile_features_look/'
+#
+#     def generate_view_json(self, filename, sheetname, row, col, workbook_feature_path, save_path, cross=False):
+def generate_view_json(filename, sheetname, row, col, workbook_feature_path,
+                       save_path=root_path + 'demo_tile_features_look/', cross=False):
+    """
+    :param filename:文件名
+    :param sheetname:sheet名
+    :param row:行号
+    :param col:列号
+    :param workbook_feature_path:保存的路径
+    :param save_path:保存的路径
+    :param cross:
+    :return:
+    """
+    with open(workbook_feature_path + filename + '.json', 'r', encoding='utf-8') as f:
         workbook_json = json.load(f)
-    generate_demo_features(filename, sheetname, workbook_json,row, col, save_path, is_look=True, cross=cross)
+    generate_demo_features(filename, sheetname, workbook_json, row, col, save_path, is_look=True, cross=cross)
 
 
 def para_tile_demo_second(save_path=root_path + 'demo_tile_features/'):
-    refcell_list = os.listdir(root_path+'first_tile_res_new')
+    refcell_list = os.listdir(root_path + 'first_tile_res_new')
     filename2sheetname = {}
     for index, formula_token_file in enumerate(refcell_list):
         formula_token = formula_token_file.replace(".npy", '')
@@ -3708,8 +3859,8 @@ def para_tile_demo_second(save_path=root_path + 'demo_tile_features/'):
         filename2sheetname[origin_filename][origin_sheetname].append(str(origin_row) + '---' + str(origin_col))
 
     def batch_generate_tile_demo_features(thread_id, batch_num):
-        
-        batch_len = int(len(filename2sheetname)/batch_num)
+
+        batch_len = int(len(filename2sheetname) / batch_num)
         count = 0
 
         all_num = 56144857
@@ -3719,18 +3870,20 @@ def para_tile_demo_second(save_path=root_path + 'demo_tile_features/'):
 
         for index, filename in enumerate(filename2sheetname):
             if index != batch_num:
-                if(index <= batch_len * (thread_id - 1 ) or index > batch_len * thread_id):
+                if (index <= batch_len * (thread_id - 1) or index > batch_len * thread_id):
                     continue
             else:
-                if index <= batch_len * (thread_id - 1 ):
+                if index <= batch_len * (thread_id - 1):
                     continue
             print(index, len(filename2sheetname))
-            with open('../Demo/origin_fortune500_workbook_json/'+filename + '.json', 'r') as f:
+            with open('../Demo/origin_fortune500_workbook_json/' + filename + '.json', 'r') as f:
                 workbook_json = json.load(f)
             for sheetname in filename2sheetname[filename]:
                 filesheet = filename + '---' + sheetname
                 for row_col in filename2sheetname[filename][sheetname]:
-                    res = np.load('/datadrive-2/data/fortune500_test/first_tile_res_new/' + filesheet + '---' + row_col + '.npy', allow_pickle=True).item()
+                    res = np.load(
+                        '/datadrive-2/data/fortune500_test/first_tile_res_new/' + filesheet + '---' + row_col + '.npy',
+                        allow_pickle=True).item()
                     for key in res:
                         if 'best_row_col' not in res[key]:
                             continue
@@ -3741,11 +3894,14 @@ def para_tile_demo_second(save_path=root_path + 'demo_tile_features/'):
                         for row in range(best_row, best_row + 100):
                             for col in range(best_col, best_col + 10):
                                 count += 1
-                                if os.path.exists(save_path + filename + '---' + sheetname + '---' + str(row) + '---' + str(col) + ".json"):
+                                if os.path.exists(
+                                        save_path + filename + '---' + sheetname + '---' + str(row) + '---' + str(
+                                            col) + ".json"):
                                     continue
-                                generate_demo_features(filename, sheetname, workbook_json,row, col, save_path)
+                                generate_demo_features(filename, sheetname, workbook_json, row, col, save_path)
         print('count', count)
-    batch_generate_tile_demo_features(1,1)
+
+    batch_generate_tile_demo_features(1, 1)
     # process = [
     #     Process(target=batch_generate_tile_demo_features, args=(1,20)),
     #     Process(target=batch_generate_tile_demo_features, args=(2,20)), 
@@ -3771,35 +3927,34 @@ def para_tile_demo_second(save_path=root_path + 'demo_tile_features/'):
     # [p.start() for p in process]  # 开启了两个进程
     # [p.join() for p in process]   # 等待两个进程依次结束
 
-def generate_one_after_feature(filename, sheetname, row, col, source_root_path, save_path, model_path):   
+
+def generate_one_after_feature(filename, sheetname, row, col, source_root_path, save_path, model_path):
     formula_token = filename + '---' + sheetname + '---' + str(row) + '---' + str(col)
     model = torch.load(model_path)
     if os.path.exists(save_path + formula_token + '.npy'):
         return
-    
     try:
-
         feature_nparray = np.load(source_root_path + formula_token + '.npy', allow_pickle=True)
-        feature_nparray = feature_nparray.reshape(1,100,10,399)
+        feature_nparray = feature_nparray.reshape(1, 100, 10, 399)
         model.eval()
-
         feature_nparray = torch.DoubleTensor(feature_nparray)
         feature_nparray = Variable(feature_nparray).to(torch.float32)
         feature_nparray = model(feature_nparray).detach().numpy()
         np.save(save_path + formula_token + '.npy', feature_nparray)
-
     except Exception as e:
         print('error: generate_one_after_feature:')
         print(e)
-        return 
+        return
 
-def para_tile_demo_second_block(top_k = 1, save_path=root_path + 'demo_tile_features/', save_path2 = root_path + 'demo_after_features/'):
+
+def para_tile_demo_second_block(top_k=1, save_path=root_path + 'demo_tile_features/',
+                                save_path2=root_path + 'demo_after_features/'):
     model_path = '196model/cnn_new_dynamic_triplet_margin_1_3_12'
     model = torch.load(model_path)
     bert_model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
     with open('/datadrive/data/bert_dict/bert_dict.json', 'r') as f:
         bert_dict = json.load(f)
-    
+
     with open("json_data/content_temp_dict_1.json", 'r') as f:
         content_tem_dict = json.load(f)
 
@@ -3822,8 +3977,8 @@ def para_tile_demo_second_block(top_k = 1, save_path=root_path + 'demo_tile_feat
         filename2sheetname[origin_filename][origin_sheetname].append(str(origin_row) + '---' + str(origin_col))
 
     def batch_generate_tile_demo_features(bert_dict, content_tem_dict, model, thread_id, batch_num):
-        
-        batch_len = int(len(filename2sheetname)/batch_num)
+
+        batch_len = int(len(filename2sheetname) / batch_num)
         count = 0
 
         all_num = 56144857
@@ -3842,17 +3997,19 @@ def para_tile_demo_second_block(top_k = 1, save_path=root_path + 'demo_tile_feat
             load_wbj_stime = time.time()
             if filename != '331430564339131039422768272513617590289-sluc487b.xlsx':
                 continue
-            with open('../Demo/origin_fortune500_workbook_json/'+filename + '.json', 'r') as f:
+            with open('../Demo/origin_fortune500_workbook_json/' + filename + '.json', 'r') as f:
                 workbook_json = json.load(f)
             load_wbj_etime = time.time()
             for index1, sheetname in enumerate(filename2sheetname[filename]):
-                print("    ",index1,len(filename2sheetname[filename]))
+                print("    ", index1, len(filename2sheetname[filename]))
                 filesheet = filename + '---' + sheetname
                 if sheetname != 'SCHEMATIC AND BoM':
                     continue
                 for row_col in filename2sheetname[filename][sheetname]:
                     start_time = time.time()
-                    res = np.load('/datadrive-2/data/fortune500_test/sorted_first_block/' + filesheet + '---' + row_col + '.npy', allow_pickle=True).item()
+                    res = np.load(
+                        '/datadrive-2/data/fortune500_test/sorted_first_block/' + filesheet + '---' + row_col + '.npy',
+                        allow_pickle=True).item()
                     best_row_col_list = []
                     if filename + '---' + sheetname + '---' + row_col != '331430564339131039422768272513617590289-sluc487b.xlsx---SCHEMATIC AND BoM---42---5':
                         continue
@@ -3873,18 +4030,23 @@ def para_tile_demo_second_block(top_k = 1, save_path=root_path + 'demo_tile_feat
                                 for col in range(best_col, best_col + 10):
                                     # print(row, col)
                                     count += 1
-                                    if os.path.exists(root_path + 'demo_after_features/' + filename + '---' + sheetname + '---' + str(row) + '---' + str(col) + ".npy"):
+                                    if os.path.exists(
+                                            root_path + 'demo_after_features/' + filename + '---' + sheetname + '---' + str(
+                                                row) + '---' + str(col) + ".npy"):
                                         continue
                                     print("generate features")
-                                    generate_demo_features(filename, sheetname, workbook_json,row, col, save_path)
-                                    generate_one_after_feature(filename + '---' + sheetname + '---' + str(row) +'---'+ str(col), bert_dict, content_tem_dict, model)
+                                    generate_demo_features(filename, sheetname, workbook_json, row, col, save_path)
+                                    generate_one_after_feature(
+                                        filename + '---' + sheetname + '---' + str(row) + '---' + str(col), bert_dict,
+                                        content_tem_dict, model)
                     end_time = time.time()
                     # with open(root_path + 'second_level_time/' + filename + '---' + sheetname + '---' + row_col + ".json", 'w') as f:
-                        # json.dump({'second_level_time': end_time - start_time, 'load_wbj_time': load_wbj_etime - load_wbj_stime}, f)
+                    # json.dump({'second_level_time': end_time - start_time, 'load_wbj_time': load_wbj_etime - load_wbj_stime}, f)
             #     break
             # break
         print('count', count)
-    batch_generate_tile_demo_features(bert_dict, content_tem_dict, model, 1,1)
+
+    batch_generate_tile_demo_features(bert_dict, content_tem_dict, model, 1, 1)
     # process = [
     #     Process(target=batch_generate_tile_demo_features, args=(bert_dict, content_tem_dict, model, 1,5)),
     #     Process(target=batch_generate_tile_demo_features, args=(bert_dict, content_tem_dict, model, 2,5)),
@@ -3918,11 +4080,11 @@ def para_tile_demo_second_block(top_k = 1, save_path=root_path + 'demo_tile_feat
     # [p.start() for p in process]  # 开启了两个进程
     # [p.join() for p in process]   # 等待两个进程依次结束
 
-def sort_second_block(top_k = 1):
 
-    refcell_list = os.listdir(root_path+'sorted_first_block')
+def sort_second_block(top_k=1):
+    refcell_list = os.listdir(root_path + 'sorted_first_block')
     # with open("need_run_list.json", 'r') as f:
-        # need_run_list = json.load(f)
+    # need_run_list = json.load(f)
     filename2sheetname = {}
     for index, formula_token_file in enumerate(refcell_list):
         formula_token = formula_token_file.replace(".npy", '')
@@ -3940,7 +4102,7 @@ def sort_second_block(top_k = 1):
         filename2sheetname[origin_filename][origin_sheetname].append(str(origin_row) + '---' + str(origin_col))
 
     def batch_generate_tile_demo_features(thread_id, batch_num):
-        batch_len = int(len(filename2sheetname)/batch_num)
+        batch_len = int(len(filename2sheetname) / batch_num)
         count = 0
 
         all_num = 56144857
@@ -3957,7 +4119,7 @@ def sort_second_block(top_k = 1):
             #         continue
             # print(index, len(filename2sheetname))
             # if filename != '331430564339131039422768272513617590289-sluc487b.xlsx':
-                # continue
+            # continue
             for sheetname in filename2sheetname[filename]:
                 origin_filesheet = filename + '---' + sheetname
                 # if sheetname != 'SCHEMATIC AND BoM':
@@ -3969,7 +4131,7 @@ def sort_second_block(top_k = 1):
                     if formula_token != '289605582270926027305192306518209639446-acceptedtable.xlsx---Personalize Table of UNs I Ship---18---4':
                         continue
                     need_continue = False
-                    
+
                     tmp_continue = True
                     # if os.path.exists(root_path + 'sorted_second_block/' + formula_token + ".npy"):
                     #     exists_res = np.load(root_path + 'sorted_second_block/' + formula_token + ".npy", allow_pickle=True).item()
@@ -3993,12 +4155,12 @@ def sort_second_block(top_k = 1):
                     with open(root_path + 'model1_res/' + formula_token + '.json', 'r') as f:
                         mode1_res = json.load(f)
                     found_filesheet = mode1_res[1].split('---')[0] + '---' + mode1_res[1].split('---')[1]
-                    found_formula_token = mode1_res[1] 
+                    found_formula_token = mode1_res[1]
 
                     if not os.path.exists(root_path + 'test_refcell_position/' + found_formula_token + '.json'):
                         print('not exists:test_refcell_position')
                         continue
-                    with open(root_path + 'test_refcell_position/'+found_formula_token + '.json' , 'r') as f:
+                    with open(root_path + 'test_refcell_position/' + found_formula_token + '.json', 'r') as f:
                         test_refcell_position = json.load(f)
 
                     print('len(test_refcell_position)', len(test_refcell_position))
@@ -4007,20 +4169,27 @@ def sort_second_block(top_k = 1):
                         ref_row = position['R']
                         ref_col = position['C']
                         print(ref_row, ref_col)
-                        if not os.path.exists(root_path + 'demo_after_features/' + found_filesheet + '---' + str(ref_row) + '---' + str(ref_col) + '.npy'):
+                        if not os.path.exists(root_path + 'demo_after_features/' + found_filesheet + '---' + str(
+                                ref_row) + '---' + str(ref_col) + '.npy'):
                             print('not exists:demo_after_features ref_row, ref_col')
                             continue
-                        if not os.path.exists('/datadrive-2/data/fortune500_test/sorted_first_block/' + formula_token + '.npy'):
+                        if not os.path.exists(
+                                '/datadrive-2/data/fortune500_test/sorted_first_block/' + formula_token + '.npy'):
                             print('not exists:first_tile_res_new')
                             continue
-                        feature = np.load(root_path + 'demo_after_features/' + found_filesheet + '---' + str(ref_row) + '---' + str(ref_col) + '.npy', allow_pickle=True)
-                        sorted_first_block = np.load('/datadrive-2/data/fortune500_test/sorted_first_block/' + formula_token + '.npy', allow_pickle=True).item()
+                        feature = np.load(
+                            root_path + 'demo_after_features/' + found_filesheet + '---' + str(ref_row) + '---' + str(
+                                ref_col) + '.npy', allow_pickle=True)
+                        sorted_first_block = np.load(
+                            '/datadrive-2/data/fortune500_test/sorted_first_block/' + formula_token + '.npy',
+                            allow_pickle=True).item()
 
                         if str(ref_row) + '---' + str(ref_col) not in sorted_first_block:
                             print('not in first', str(ref_row) + '---' + str(ref_col))
                             continue
                         best_row_col_list = []
-                        print("sorted_first_block[str(ref_row) + '---' + str(ref_col)]", sorted_first_block[str(ref_row) + '---' + str(ref_col)])
+                        print("sorted_first_block[str(ref_row) + '---' + str(ref_col)]",
+                              sorted_first_block[str(ref_row) + '---' + str(ref_col)])
                         for first_row_col in sorted_first_block[str(ref_row) + '---' + str(ref_col)]:
                             # print('first_row_col', first_row_col)
                             distance_dict = sorted_first_block[str(ref_row) + '---' + str(ref_col)][first_row_col]
@@ -4035,33 +4204,39 @@ def sort_second_block(top_k = 1):
                             print('best_row_col', best_row_col)
                             best_row = int(best_row_col.split('---')[0])
                             best_col = int(best_row_col.split('---')[1])
-                            
+
                             for row in range(best_row, best_row + 100):
                                 for col in range(best_col, best_col + 10):
                                     # if(best_row_col == '1---11'):
                                     #     print('    ', row, col)
-                                    if not os.path.exists(root_path + 'demo_after_features/' + origin_filesheet + '---' + str(row) + '---' + str(col) + '.npy'):
+                                    if not os.path.exists(
+                                            root_path + 'demo_after_features/' + origin_filesheet + '---' + str(
+                                                row) + '---' + str(col) + '.npy'):
                                         print("not exists:in demo_after_features")
                                         continue
-                                    other_feature = np.load(root_path + 'demo_after_features/' + origin_filesheet + '---' + str(row) + '---' + str(col) + '.npy', allow_pickle=True)
-                                # print('other_feature', other_feature)
+                                    other_feature = np.load(
+                                        root_path + 'demo_after_features/' + origin_filesheet + '---' + str(
+                                            row) + '---' + str(col) + '.npy', allow_pickle=True)
+                                    # print('other_feature', other_feature)
                                     distance = euclidean(feature, other_feature)
-                                # print('distance', distance)
-                                    res[str(ref_row) + '---' + str(ref_col)][str(row) + '---'  + str(col)] = distance
+                                    # print('distance', distance)
+                                    res[str(ref_row) + '---' + str(ref_col)][str(row) + '---' + str(col)] = distance
                                     res[str(ref_row) + '---' + str(ref_col)]['best_distance'] = np.inf
                                     res[str(ref_row) + '---' + str(ref_col)]['best_row'] = -1
-                                    if distance  < res[str(ref_row) + '---' + str(ref_col)]['best_distance']:
+                                    if distance < res[str(ref_row) + '---' + str(ref_col)]['best_distance']:
                                         res[str(ref_row) + '---' + str(ref_col)]['best_distance'] = distance
-                                        res[str(ref_row) + '---' + str(ref_col)]['best_row_col'] = str(row) + '---' + str(col)     
+                                        res[str(ref_row) + '---' + str(ref_col)]['best_row_col'] = str(
+                                            row) + '---' + str(col)
                     end_time = time.time()
                     res['time'] = end_time - start_time
                     # print('res', res)
-                    print(root_path + 'sorted_second_block/' + formula_token  +'.npy')
-                    np.save(root_path + 'sorted_second_block/' + formula_token  +'.npy', res)
+                    print(root_path + 'sorted_second_block/' + formula_token + '.npy')
+                    np.save(root_path + 'sorted_second_block/' + formula_token + '.npy', res)
             #     break
             # break
         # print('count', count)
-    batch_generate_tile_demo_features(1,1)
+
+    batch_generate_tile_demo_features(1, 1)
     # process = [
     #     Process(target=batch_generate_tile_demo_features, args=(1,20)),
     #     Process(target=batch_generate_tile_demo_features, args=(2,20)), 
@@ -4087,15 +4262,17 @@ def sort_second_block(top_k = 1):
     # [p.start() for p in process]  # 开启了两个进程
     # [p.join() for p in process]   # 等待两个进程依次结束
 
+
 def euclidean(x, y):
-    return np.sqrt(np.sum((x - y)**2))
+    return np.sqrt(np.sum((x - y) ** 2))
+
 
 def sort_first_block():
-    refcell_list = os.listdir(root_path+'test_refcell_position')
-    tile_rows = os.listdir(root_path+'tile_rows')
+    refcell_list = os.listdir(root_path + 'test_refcell_position')
+    tile_rows = os.listdir(root_path + 'tile_rows')
     filename2sheetname = {}
     for filesheet_json in refcell_list:
-        filesheet = filesheet_json.replace('.json','')
+        filesheet = filesheet_json.replace('.json', '')
         filename = filesheet.split('---')[0]
         sheetname = filesheet.split('---')[1]
         if filename not in filename2sheetname:
@@ -4104,12 +4281,12 @@ def sort_first_block():
     filenames = list(filename2sheetname.keys())
 
     # formula_filelists = os.listdir(root_path + 'test_refcell_position')
-    formula_filelists = os.listdir(root_path + 'afterfeature_test')
+    formula_filelists = os.listdir(root_path + 'after_feature_test')
     # print(len(filelist)) 
     # need_continue = True
-    for index,formula_token_npy in enumerate(formula_filelists):
+    for index, formula_token_npy in enumerate(formula_filelists):
         # if formula_token_npy != "234679781916000373063272744719263521823-8054.ddr3-phy-calc-v11-for-1600.xlsx---PHY CALC---123---4.npy":
-            # continue
+        # continue
         if formula_token_npy != "289605582270926027305192306518209639446-acceptedtable.xlsx---Personalize Table of UNs I Ship---18---4.npy":
             continue
 
@@ -4142,10 +4319,9 @@ def sort_first_block():
         print("found_formula_token", found_formula_token)
         if not os.path.exists(root_path + 'test_refcell_position/' + found_formula_token + '.json'):
             continue
-        with open(root_path + 'test_refcell_position/'+found_formula_token + '.json' , 'r') as f:
+        with open(root_path + 'test_refcell_position/' + found_formula_token + '.json', 'r') as f:
             test_refcell_position = json.load(f)
 
-        
         with open(root_path + 'tile_rows/' + origin_filesheet + '.json', 'r') as f:
             tile_rows = json.load(f)
         with open(root_path + 'tile_cols/' + origin_filesheet + '.json', 'r') as f:
@@ -4159,43 +4335,47 @@ def sort_first_block():
             ref_row = position['R']
             ref_col = position['C']
 
-            refcell_tile_row = int(ref_row/100)*100 + 1
-            refcell_tile_col = int(ref_col/10)*10 + 1
+            refcell_tile_row = int(ref_row / 100) * 100 + 1
+            refcell_tile_col = int(ref_col / 10) * 10 + 1
 
             is_left = False
             is_up = False
-            if ref_row - refcell_tile_row < refcell_tile_row + 100 - ref_row: # up
+            if ref_row - refcell_tile_row < refcell_tile_row + 100 - ref_row:  # up
                 is_up = True
-            if ref_col - refcell_tile_col < refcell_tile_col + 10 - ref_col: # left
+            if ref_col - refcell_tile_col < refcell_tile_col + 10 - ref_col:  # left
                 is_left = True
 
             closed_four_tiles = []
-            closed_four_tiles.append((refcell_tile_row, refcell_tile_col)) # first
+            closed_four_tiles.append((refcell_tile_row, refcell_tile_col))  # first
             if is_up:
                 if refcell_tile_row >= 101:
                     closed_four_tiles.append((refcell_tile_row - 100, refcell_tile_col))  # second add up
                     if is_left:
                         if refcell_tile_col >= 11:
-                            closed_four_tiles.append((refcell_tile_row - 100, refcell_tile_col-10))  # third add left, up
+                            closed_four_tiles.append(
+                                (refcell_tile_row - 100, refcell_tile_col - 10))  # third add left, up
                     else:
                         if refcell_tile_col + 10 in tile_cols:
-                            closed_four_tiles.append((refcell_tile_row - 100, refcell_tile_col+10))  # third add right, up
+                            closed_four_tiles.append(
+                                (refcell_tile_row - 100, refcell_tile_col + 10))  # third add right, up
             else:
                 if refcell_tile_col + 100 in tile_rows:
-                    closed_four_tiles.append((refcell_tile_row + 100, refcell_tile_col))  #0 second add down
+                    closed_four_tiles.append((refcell_tile_row + 100, refcell_tile_col))  # 0 second add down
                 if is_left:
                     if refcell_tile_col >= 11:
-                        closed_four_tiles.append((refcell_tile_row + 100, refcell_tile_col-10))  # third add left, down
+                        closed_four_tiles.append(
+                            (refcell_tile_row + 100, refcell_tile_col - 10))  # third add left, down
                 else:
-                    if refcell_tile_col + 10 in tile_cols: 
-                        closed_four_tiles.append((refcell_tile_row + 100, refcell_tile_col+10))  # third add right, down
+                    if refcell_tile_col + 10 in tile_cols:
+                        closed_four_tiles.append(
+                            (refcell_tile_row + 100, refcell_tile_col + 10))  # third add right, down
 
             if is_left:
                 if refcell_tile_col >= 11:
-                    closed_four_tiles.append((refcell_tile_row, refcell_tile_col-10))  # forth add left
+                    closed_four_tiles.append((refcell_tile_row, refcell_tile_col - 10))  # forth add left
             else:
-                if refcell_tile_col + 10 in tile_cols: 
-                    closed_four_tiles.append((refcell_tile_row, refcell_tile_col+10))  # forth add right
+                if refcell_tile_col + 10 in tile_cols:
+                    closed_four_tiles.append((refcell_tile_row, refcell_tile_col + 10))  # forth add right
             # print("str(ref_row) + '---' + str(ref_col)", str(ref_row) + '---' + str(ref_col))
             # print("closed_four_tiles", closed_four_tiles)
             res[str(ref_row) + '---' + str(ref_col)] = {}
@@ -4204,40 +4384,52 @@ def sort_first_block():
                 one_found_col = one_found_tile[1]
                 # print('one_found_row', one_found_row)
                 # print('one_found_col', one_found_col)
-                if not os.path.exists(root_path + 'demo_after_features/' + found_filesheet + '---' + str(one_found_row) + '---' + str(one_found_col) + '.npy'):
+                if not os.path.exists(
+                        root_path + 'demo_after_features/' + found_filesheet + '---' + str(one_found_row) + '---' + str(
+                            one_found_col) + '.npy'):
                     print("not exists")
                     continue
-                feature = np.load(root_path + 'demo_after_features/' + found_filesheet + '---' + str(one_found_row) + '---' + str(one_found_col) + '.npy', allow_pickle=True)
-                
+                feature = np.load(
+                    root_path + 'demo_after_features/' + found_filesheet + '---' + str(one_found_row) + '---' + str(
+                        one_found_col) + '.npy', allow_pickle=True)
+
                 # print('feature', feature)
-                
+
                 # res[str(ref_row) + '---' + str(ref_col)]['best_distance'] = np.inf
                 # res[str(ref_row) + '---' + str(ref_col)]['best_row_col'] = ''
-                res[str(ref_row) + '---' + str(ref_col)][str(one_found_row) +'---' +str(one_found_col)] = {}
+                res[str(ref_row) + '---' + str(ref_col)][str(one_found_row) + '---' + str(one_found_col)] = {}
                 for row in tile_rows:
                     for col in tile_cols:
-                        if not os.path.exists(root_path + 'demo_after_features/' + origin_filesheet + '---' + str(row) + '---' + str(col) + '.npy'):
-                            print('after not exists:', root_path + 'demo_after_features/' + origin_filesheet + '---' + str(row) + '---' + str(col) + '.npy')
+                        if not os.path.exists(
+                                root_path + 'demo_after_features/' + origin_filesheet + '---' + str(row) + '---' + str(
+                                    col) + '.npy'):
+                            print('after not exists:',
+                                  root_path + 'demo_after_features/' + origin_filesheet + '---' + str(
+                                      row) + '---' + str(col) + '.npy')
                             continue
-                        other_feature = np.load(root_path + 'demo_after_features/' + origin_filesheet + '---' + str(row) + '---' + str(col) + '.npy', allow_pickle=True)
+                        other_feature = np.load(
+                            root_path + 'demo_after_features/' + origin_filesheet + '---' + str(row) + '---' + str(
+                                col) + '.npy', allow_pickle=True)
                         # print('other_feature', other_feature)
                         distance = euclidean(feature, other_feature)
                         # print('distance', distance)
-                        res[str(ref_row) + '---' + str(ref_col)][str(one_found_row) +'---' +str(one_found_col)][str(row) + '---'  + str(col)] = distance
+                        res[str(ref_row) + '---' + str(ref_col)][str(one_found_row) + '---' + str(one_found_col)][
+                            str(row) + '---' + str(col)] = distance
                         # if distance  < res[str(ref_row) + '---' + str(ref_col)]['best_distance']:
                         #     res[str(ref_row) + '---' + str(ref_col)]['best_distance'] = distance
                         #     res[str(ref_row) + '---' + str(ref_col)]['best_row_col'] = str(row) + '---' + str(col)     
         end_time = time.time()
         res['time'] = end_time - start_time
         # print("res", res)
-        np.save(root_path + 'sorted_first_block/' + formula_token  +'.npy', res)
+        np.save(root_path + 'sorted_first_block/' + formula_token + '.npy', res)
 
-def find_first_top1_center(save_path = root_path + 'demo_tile_features/'):
-    refcell_list = os.listdir(root_path+'test_refcell_position')
-    tile_rows = os.listdir(root_path+'tile_rows')
+
+def find_first_top1_center(save_path=root_path + 'demo_tile_features/'):
+    refcell_list = os.listdir(root_path + 'test_refcell_position')
+    tile_rows = os.listdir(root_path + 'tile_rows')
     filename2sheetname = {}
     for filesheet_json in refcell_list:
-        filesheet = filesheet_json.replace('.json','')
+        filesheet = filesheet_json.replace('.json', '')
         filename = filesheet.split('---')[0]
         sheetname = filesheet.split('---')[1]
         if filename not in filename2sheetname:
@@ -4246,11 +4438,11 @@ def find_first_top1_center(save_path = root_path + 'demo_tile_features/'):
     filenames = list(filename2sheetname.keys())
 
     # formula_filelists = os.listdir(root_path + 'test_refcell_position')
-    formula_filelists = os.listdir(root_path + 'afterfeature_test')
+    formula_filelists = os.listdir(root_path + 'after_feature_test')
     # print(len(filelist)) 
-    for index,formula_token_npy in enumerate(formula_filelists):
+    for index, formula_token_npy in enumerate(formula_filelists):
         # if formula_token_npy != "234679781916000373063272744719263521823-8054.ddr3-phy-calc-v11-for-1600.xlsx---PHY CALC---123---4.npy":
-            # continue
+        # continue
         # print(index, len(formula_filelists))
         formula_token = formula_token_npy.replace('.npy', '')
         res = {}
@@ -4270,13 +4462,11 @@ def find_first_top1_center(save_path = root_path + 'demo_tile_features/'):
         found_filesheet = mode1_res[1].split('---')[0] + '---' + mode1_res[1].split('---')[1]
         print('found_sheet', found_filesheet)
 
-        
         if not os.path.exists(root_path + 'test_refcell_position/' + found_formula_token + '.json'):
             continue
-        with open(root_path + 'test_refcell_position/'+found_formula_token + '.json' , 'r') as f:
+        with open(root_path + 'test_refcell_position/' + found_formula_token + '.json', 'r') as f:
             test_refcell_position = json.load(f)
 
-        
         with open(root_path + 'tile_rows/' + origin_filesheet + '.json', 'r') as f:
             tile_rows = json.load(f)
         with open(root_path + 'tile_cols/' + origin_filesheet + '.json', 'r') as f:
@@ -4289,46 +4479,56 @@ def find_first_top1_center(save_path = root_path + 'demo_tile_features/'):
         for position in test_refcell_position:
             ref_row = position['R']
             ref_col = position['C']
-            if not os.path.exists(root_path + 'demo_after_features/' + found_filesheet + '---' + str(ref_row) + '---' + str(ref_col) + '.npy'):
+            if not os.path.exists(
+                    root_path + 'demo_after_features/' + found_filesheet + '---' + str(ref_row) + '---' + str(
+                        ref_col) + '.npy'):
                 print("not exists")
                 continue
-            feature = np.load(root_path + 'demo_after_features/' + found_filesheet + '---' + str(ref_row) + '---' + str(ref_col) + '.npy', allow_pickle=True)
+            feature = np.load(root_path + 'demo_after_features/' + found_filesheet + '---' + str(ref_row) + '---' + str(
+                ref_col) + '.npy', allow_pickle=True)
             print('ref_row', ref_row)
             print('ref_col', ref_col)
             # print('feature', feature)
             res[str(ref_row) + '---' + str(ref_col)] = {}
             res[str(ref_row) + '---' + str(ref_col)]['best_distance'] = np.inf
             res[str(ref_row) + '---' + str(ref_col)]['best_row_col'] = ''
-        
+
             for row in tile_rows:
                 for col in tile_cols:
-                    if not os.path.exists(root_path + 'demo_after_features/' + origin_filesheet + '---' + str(row) + '---' + str(col) + '.npy'):
-                        print('after not exists:', root_path + 'demo_after_features/' + origin_filesheet + '---' + str(row) + '---' + str(col) + '.npy')
+                    if not os.path.exists(
+                            root_path + 'demo_after_features/' + origin_filesheet + '---' + str(row) + '---' + str(
+                                col) + '.npy'):
+                        print('after not exists:',
+                              root_path + 'demo_after_features/' + origin_filesheet + '---' + str(row) + '---' + str(
+                                  col) + '.npy')
                         continue
-                    other_feature = np.load(root_path + 'demo_after_features/' + origin_filesheet + '---' + str(row) + '---' + str(col) + '.npy', allow_pickle=True)
+                    other_feature = np.load(
+                        root_path + 'demo_after_features/' + origin_filesheet + '---' + str(row) + '---' + str(
+                            col) + '.npy', allow_pickle=True)
                     # print('other_feature', other_feature)
                     distance = euclidean(feature, other_feature)
                     print('distance', distance)
-                    res[str(ref_row) + '---' + str(ref_col)][str(row) + '---'  + str(col)] = distance
-                    if distance  < res[str(ref_row) + '---' + str(ref_col)]['best_distance']:
+                    res[str(ref_row) + '---' + str(ref_col)][str(row) + '---' + str(col)] = distance
+                    if distance < res[str(ref_row) + '---' + str(ref_col)]['best_distance']:
                         res[str(ref_row) + '---' + str(ref_col)]['best_distance'] = distance
-                        res[str(ref_row) + '---' + str(ref_col)]['best_row_col'] = str(row) + '---' + str(col)     
-        np.save(root_path + 'first_tile_res_new/' + formula_token  +'.npy', res)
+                        res[str(ref_row) + '---' + str(ref_col)]['best_row_col'] = str(row) + '---' + str(col)
+        np.save(root_path + 'first_tile_res_new/' + formula_token + '.npy', res)
         # for 
 
-def count_demo_recell(save_path = root_path + 'demo_tile_features/'):
+
+def count_demo_recell(save_path=root_path + 'demo_tile_features/'):
     model_path = '196model/cnn_new_dynamic_triplet_margin_1_3_12'
     model = torch.load(model_path)
-    refcell_list = os.listdir(root_path+'test_refcell_position')
+    refcell_list = os.listdir(root_path + 'test_refcell_position')
     ref_cell_fail_res = []
     filename2sheetname = {}
     for filesheet_json in refcell_list:
-        filesheet = filesheet_json.replace('.json','')
+        filesheet = filesheet_json.replace('.json', '')
         filename = filesheet.split('---')[0]
         sheetname = filesheet.split('---')[1]
         row = filesheet.split('---')[2]
         col = filesheet.split('---')[3]
-        row_col = row+'---' + col
+        row_col = row + '---' + col
         if filename not in filename2sheetname:
             filename2sheetname[filename] = {}
         if sheetname not in filename2sheetname[filename]:
@@ -4341,52 +4541,59 @@ def count_demo_recell(save_path = root_path + 'demo_tile_features/'):
     bert_model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
     with open('/datadrive/data/bert_dict/bert_dict.json', 'r') as f:
         bert_dict = json.load(f)
-    
+
     with open("json_data/content_temp_dict_1.json", 'r') as f:
         content_tem_dict = json.load(f)
-    for index,filename in enumerate(filenames):
+    for index, filename in enumerate(filenames):
         print(index, len(filenames))
-        with open('../Demo/origin_fortune500_workbook_json/'+filename + '.json', 'r') as f:
+        with open('../Demo/origin_fortune500_workbook_json/' + filename + '.json', 'r') as f:
             workbook_json = json.load(f)
         for index1, sheetname in enumerate(filename2sheetname[filename]):
             print('    ', index1, len(filename2sheetname[filename]))
 
             for index2, row_col in enumerate(filename2sheetname[filename][sheetname]):
-                
+
                 print('        ', index2, len(filename2sheetname[filename][sheetname]))
-                with open(root_path + 'test_refcell_position/' + filename + '---' + sheetname+'---' + row_col + '.json', 'r') as f:
+                with open(
+                        root_path + 'test_refcell_position/' + filename + '---' + sheetname + '---' + row_col + '.json',
+                        'r') as f:
                     positions = json.load(f)
-            
+
                 for position in positions:
                     if 'R' not in position or 'C' not in position:
-                        ref_cell_fail_res.append(filename + '---' + sheetname+'---' + row_col)
+                        ref_cell_fail_res.append(filename + '---' + sheetname + '---' + row_col)
                         break
                     row = position['R']
                     col = position['C']
-                    if os.path.exists(root_path +'demo_after_features/' + filename + '---' + sheetname + '---' + str(row) + '---' +str(col) + ".npy"):
+                    if os.path.exists(root_path + 'demo_after_features/' + filename + '---' + sheetname + '---' + str(
+                            row) + '---' + str(col) + ".npy"):
                         continue
-                    print('generate features', filename + '---' + sheetname + '---' + str(row) +'---'+ str(col))
-                    generate_demo_features(filename, sheetname, workbook_json,row, col, save_path)
-                    generate_one_after_feature(filename + '---' + sheetname + '---' + str(row) +'---'+ str(col), bert_dict, content_tem_dict, model)
+                    print('generate features', filename + '---' + sheetname + '---' + str(row) + '---' + str(col))
+                    generate_demo_features(filename, sheetname, workbook_json, row, col, save_path)
+                    generate_one_after_feature(filename + '---' + sheetname + '---' + str(row) + '---' + str(col),
+                                               bert_dict, content_tem_dict, model)
     with open('ref_cell_parse_fail_res.json', 'w') as f:
         json.dump(ref_cell_fail_res, f)
+
+
 def look_features():
     filelist = os.listdir("/datadrive-2/data/fortune500_test/demo_tile_features/")
     pirnt_set = set()
     token_set = set()
 
     for filename_json in filelist:
-        formula_token  = filename_json.replace('.json', '')
+        formula_token = filename_json.replace('.json', '')
         filename = filename_json.split('---')[0]
         sheetname = filename_json.split('---')[1]
         filesheet = filename + '---' + sheetname
         pirnt_set.add(filesheet)
         token_set.add(formula_token)
-    
+
     for item in token_set:
         # print(item)
-        if '173586831586798430403847316065547903587-wcp_edg_workbook.xlsx---Start Here' in  item:
-            print(item)         
+        if '173586831586798430403847316065547903587-wcp_edg_workbook.xlsx---Start Here' in item:
+            print(item)
+
 
 def is_number(s):
     try:
@@ -4403,7 +4610,10 @@ def is_number(s):
         pass
 
     return False
-def get_feature_vector_with_bert_keyw(feature, bert_dict, content_tem_dict, mask, temp_bert_dict, bert_dict_path, bert_dict_file):
+
+
+def get_feature_vector_with_bert_keyw(feature, bert_dict, content_tem_dict, mask, temp_bert_dict, bert_dict_path,
+                                      bert_dict_file):
     bert_model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
     result = []
     for index, item1 in enumerate(feature):
@@ -4413,45 +4623,45 @@ def get_feature_vector_with_bert_keyw(feature, bert_dict, content_tem_dict, mask
 
         for index1, item in enumerate(feature[index]):
             start_time = time.time()
-            if index1==0:#background color r
+            if index1 == 0:  # background color r
                 one_cel_feature.append(feature[index][item])
-            if index1==1:#background color b
+            if index1 == 1:  # background color b
                 one_cel_feature.append(feature[index][item])
-            if index1==2:#background color g
+            if index1 == 2:  # background color g
                 one_cel_feature.append(feature[index][item])
-            if index1==3:#font color r
+            if index1 == 3:  # font color r
                 one_cel_feature.append(feature[index][item])
-            if index1==4:#font color b
+            if index1 == 4:  # font color b
                 one_cel_feature.append(feature[index][item])
-            if index1==5:#font color g
-                one_cel_feature.append(feature[index][item])         
-            if index1==6:#font size
+            if index1 == 5:  # font color g
                 one_cel_feature.append(feature[index][item])
-            if index1==7:#font_strikethrough
-                if(feature[index][item]==True):
+            if index1 == 6:  # font size
+                one_cel_feature.append(feature[index][item])
+            if index1 == 7:  # font_strikethrough
+                if (feature[index][item] == True):
                     one_cel_feature.append(1)
                 else:
                     one_cel_feature.append(0)
-            if index1==8:#font_shadow
-                if(feature[index][item]==True):
+            if index1 == 8:  # font_shadow
+                if (feature[index][item] == True):
                     one_cel_feature.append(1)
                 else:
                     one_cel_feature.append(0)
-            if index1==9:#font_ita
-                if(feature[index][item]==True):
+            if index1 == 9:  # font_ita
+                if (feature[index][item] == True):
                     one_cel_feature.append(1)
                 else:
                     one_cel_feature.append(0)
-            if index1==10:#font_bold
-                if(feature[index][item]==True):
+            if index1 == 10:  # font_bold
+                if (feature[index][item] == True):
                     one_cel_feature.append(1)
                 else:
                     one_cel_feature.append(0)
-            if index1==11:#height
+            if index1 == 11:  # height
                 one_cel_feature.append(feature[index][item])
-            if index1==12:#width
+            if index1 == 12:  # width
                 one_cel_feature.append(feature[index][item])
-            if index1==13:#content\\
+            if index1 == 13:  # content\\
                 if mask == 0:
                     feature[index][item] = 'content'
                 if is_number(str(feature[index][item])):
@@ -4467,30 +4677,34 @@ def get_feature_vector_with_bert_keyw(feature, bert_dict, content_tem_dict, mask
                 elif str(feature[index][item]) in temp_bert_dict:
                     bert_feature = temp_bert_dict[str(feature[index][item])]
                 elif os.path.exists(bert_dict_path + change_word_to_save_word(str(feature[index][item])) + '.npy'):
-                    bert_feature = np.load(bert_dict_path + change_word_to_save_word(str(feature[index][item])) + '.npy', allow_pickle=True)
+                    bert_feature = np.load(
+                        bert_dict_path + change_word_to_save_word(str(feature[index][item])) + '.npy',
+                        allow_pickle=True)
                     temp_bert_dict[str(feature[index][item])] = bert_feature
                 else:
                     bert_feature = bert_model.encode(str(feature[index][item])).tolist()
                     try:
-                        np.save(bert_dict_path + change_word_to_save_word(str(feature[index][item])) + '.npy', bert_feature)
+                        np.save(bert_dict_path + change_word_to_save_word(str(feature[index][item])) + '.npy',
+                                bert_feature)
                     except:
                         bert_dict[str(feature[index][item])] = bert_feature
                         with open(bert_dict_file, 'w') as f:
                             json.dump(bert_dict, f)
                 for i in bert_feature:
                     one_cel_feature.append(i)
-            if index1==14:#content_template
+            if index1 == 14:  # content_template
                 if mask == 1:
                     if 'N' in str(feature[index][item]):
                         feature[index][item] = 'N'
                 if not str(feature[index][item]) in content_tem_dict:
-                    one_cel_feature.append(len(content_tem_dict)+1)
+                    one_cel_feature.append(len(content_tem_dict) + 1)
                 else:
                     one_cel_feature.append(content_tem_dict[str(feature[index][item])])
                 one_cel_feature.append(cell_type)
             end_time = time.time()
         result.append(one_cel_feature)
     return result, temp_bert_dict
+
 
 def para_demo_before():
     # bert_dict = {}
@@ -4505,15 +4719,14 @@ def para_demo_before():
             bert_dict = json.load(f)
     except:
         bert_dict = {}
-    
+
     with open("json_data/content_temp_dict_1.json", 'r') as f:
         content_tem_dict = json.load(f)
     offline_time2 = time.time()
-    
 
     def generate_demo_before_features(bert_dict, content_tem_dict, thread_id, batch_num):
         bert_model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
-        
+
         # saved_root_path = root_path + 'training_before_features_shift_content_mask2/'
         # saved_root_path = root_path + 'cross_training_before_specific_c2/'
         # saved_root_path = root_path + 'training_before_features/'
@@ -4521,7 +4734,7 @@ def para_demo_before():
         # saved_root_path = root_path + 'training_before_shift_c2/'
         # saved_root_path = root_path + 'demo_after_features/'
         # source_root_path = root_path + 'training_tile_features/' # demo_tile_features_specific
-        source_root_path = root_path + 'sheets_json_feaures/' # demo_tile_features_specific
+        source_root_path = root_path + 'sheets_json_feaures/'  # demo_tile_features_specific
         # source_root_path = root_path + 'cross_demo_tile_features_specific/' # demo_tile_features_specific
         # source_root_path = root_path + 'demo_tile_features_shift/'
         # source_root_path = root_path + 'demo_before_features/'
@@ -4533,39 +4746,42 @@ def para_demo_before():
         batch_len = len(formula_tokens) / batch_num
         print('formula_tokens', len(formula_tokens))
         temp_bert_dict = {}
-        for index,formula_token_path in enumerate(formula_tokens):
-            formula_token = formula_token_path.replace(".json",'').replace('.npy', '')
+        for index, formula_token_path in enumerate(formula_tokens):
+            formula_token = formula_token_path.replace(".json", '').replace('.npy', '')
             start_time = time.time()
-            
-            
+
             # if formula_token != 'andrea_ring__37__IFERCJan.xlsx---February 2000':
-                # continue
+            # continue
             if thread_id != batch_num:
-                if(index <= batch_len * (thread_id - 1 ) or index > batch_len * thread_id):
+                if (index <= batch_len * (thread_id - 1) or index > batch_len * thread_id):
                     continue
             else:
-                if index <= batch_len * (thread_id - 1 ):
+                if index <= batch_len * (thread_id - 1):
                     continue
             print(index, len(formula_tokens))
             if os.path.exists(saved_root_path + formula_token + '.npy'):
                 print('exists.....')
                 continue
             # if index == 50:
-                # break
+            # break
             print('extracting....')
             try:
                 if '.json' in formula_token_path:
                     with open(source_root_path + formula_token_path, 'r') as f:
                         # print('formula_token_path', formula_token_path)
-                    # except:
-                    #     continue
+                        # except:
+                        #     continue
                         origin_feature = json.load(f)
                     temp_time1 = time.time()
-                    feature_nparray, temp_bert_dict = get_feature_vector_with_bert_keyw(origin_feature,bert_dict= bert_dict, content_tem_dict = content_tem_dict, mask=2, temp_bert_dict = temp_bert_dict)
+                    feature_nparray, temp_bert_dict = get_feature_vector_with_bert_keyw(origin_feature,
+                                                                                        bert_dict=bert_dict,
+                                                                                        content_tem_dict=content_tem_dict,
+                                                                                        mask=2,
+                                                                                        temp_bert_dict=temp_bert_dict)
                     feature_nparray = np.array(feature_nparray)
                     np.save(saved_root_path + formula_token + '.npy', feature_nparray)
-                # except:
-                #     continue
+                    # except:
+                    #     continue
                     end_time = time.time()
                     print('load time:', temp_time1 - start_time)
                     before_time = end_time - start_time
@@ -4573,7 +4789,7 @@ def para_demo_before():
             #     else:
             #         feature_nparray = np.load(source_root_path + formula_token_path, allow_pickle=True)
             #         before_time = -1
-                
+
             #     feature_nparray = feature_nparray.reshape(1,100,10,399)
             #     model.eval()
 
@@ -4584,7 +4800,7 @@ def para_demo_before():
             #         # print('feature_list', feature_list)
             #     end_time = time.time()
             #     print(end_time - temp_time1)
-                
+
             #     np.save(saved_root_path + formula_token + '.npy', feature_nparray)
             #     after_time = end_time - temp_time1
             #     with open(root_path + 'after_time/' + formula_token + '.json', 'w') as f:
@@ -4593,8 +4809,9 @@ def para_demo_before():
                 print('e', e)
                 continue
             # break
-                # print(end_time - start_time)
+            # print(end_time - start_time)
             # break
+
     # process = [
     #     Process(target=generate_demo_before_features, args=(bert_dict, content_tem_dict,1,20)),
     #     Process(target=generate_demo_before_features, args=(bert_dict, content_tem_dict,2,20)), 
@@ -4619,9 +4836,11 @@ def para_demo_before():
     # ]
     # [p.start() for p in process]  # 开启了两个进程
     # [p.join() for p in process]   # 等待两个进程依次结束
-    generate_demo_before_features(bert_dict, content_tem_dict,1,1)
+    generate_demo_before_features(bert_dict, content_tem_dict, 1, 1)
 
     print("offline_time", offline_time2 - offline_time1)
+
+
 def test_time():
     filelist = os.listdir("/datadrive-2/data/fortune500_test/demo_tile_features")
     num = len(filelist)
@@ -4645,19 +4864,22 @@ def test_time():
     #         print('count', count)
     #         shutil.move(root_path + 'first_tile_res/' + filename, root_path + 'demo_tile_features/' + filename)
 
+
 def check_best():
     need_run_list = []
+
     def secc(second_found_formu, first_found_formul, formula):
         second_found_formu += 1
         first_found_formul += 1
         is_found = True
         found_list.append(formula['id'])
         return second_found_formu, first_found_formul, is_found
+
     with open("Formulas_fortune500_with_id.json", 'r') as f:
         formulas = json.load(f)
-    with open('fortune500_formulatoken2r1c1.json','r') as f:
+    with open('small_data_test_formulatoken2r1c1.json', 'r') as f:
         top10domain_formulatoken2r1c1 = json.load(f)
-    with open('r1c12template_fortune500_constant.json','r') as f:
+    with open('r1c12template_fortune500_constant.json', 'r') as f:
         r1c12template_top10domain = json.load(f)
     with open("crosstable_formulas.json", 'r') as f:
         crosstable_formulas = json.load(f)
@@ -4666,7 +4888,7 @@ def check_best():
 
     second_found_formu = 0
     first_found_formul = 0
-    
+
     first_out_formu = 0
     first_mul_formu = 0
     out_and_multitable_formu = 0
@@ -4690,7 +4912,7 @@ def check_best():
 
     all_ = 0
     valid_all = 0
-    
+
     count = 0
     found_list = []
     second_not_found = []
@@ -4705,16 +4927,15 @@ def check_best():
     not_in_best_formu = 0
     kw_not_in_best_formu = 0
 
-
     tmp_stat = 0
     first_fail = 0
 
     fail_res = {}
 
     model1_suc_but_fail = 0
-    model1_fail_but_suc=  0
-    model1_fail_but_suc1=  0
-    model1_fail_but_suc2=  0
+    model1_fail_but_suc = 0
+    model1_fail_but_suc1 = 0
+    model1_fail_but_suc2 = 0
 
     model1_suc = 0
 
@@ -4722,22 +4943,21 @@ def check_best():
 
     gt_not_in_second = 0
     first_out_mul_formu = 0
-    for index,formula in enumerate(formulas):
+    for index, formula in enumerate(formulas):
 
         is_found = False
         suc = False
-        
-        
+
         formula_token = formula['filesheet'] + '---' + str(formula['fr']) + '---' + str(formula['fc'])
         if formula_token not in fortune500_test_formula_token:
             continue
-        if not os.path.exists(root_path+'model1_res/'+formula_token + '.json'):
+        if not os.path.exists(root_path + 'model1_res/' + formula_token + '.json'):
             continue
-        if not os.path.exists(root_path+'afterfeature_test/'+formula_token + '.npy'):
+        if not os.path.exists(root_path + 'after_feature_test/' + formula_token + '.npy'):
             continue
         print('\033[1;35m index ' + str(index) + ' ' + str(len(formulas)) + ' ' + formula_token + '\033[0m')
         # if formula_token != '234679781916000373063272744719263521823-8054.ddr3-phy-calc-v11-for-1600.xlsx---PHY CALC---123---4':
-            # continue
+        # continue
         all_ += 1
         formula_list.append((formula['filesheet'].split('---')[1], formula['r1c1']))
         if 'RC[-1]+ROUND(10*R' in formula['r1c1']:
@@ -4747,7 +4967,7 @@ def check_best():
             multi_table += 1
             # print(formula['r1c1'])
             # continue
-        with open(root_path+'dedup_model1_res/'+formula_token + '.json', 'r') as f:
+        with open(root_path + 'dedup_model1_res/' + formula_token + '.json', 'r') as f:
             model1_res = json.load(f)
         if model1_res[4] == True:
             model1_suc += 1
@@ -4762,14 +4982,14 @@ def check_best():
             found_template_id = -1
         else:
             found_template_id = r1c12template_top10domain[model1_res[3]]
-        
+
         if found_template_id != gt_template_id:
             template_fail += 1
             # print('template fail')
             continue
 
-        found_range_path = root_path+'test_refcell_position/' + found_formula_token + '.json'
-        gt_range_path = root_path+'test_refcell_position/' + formula_token + '.json'
+        found_range_path = root_path + 'test_refcell_position/' + found_formula_token + '.json'
+        gt_range_path = root_path + 'test_refcell_position/' + formula_token + '.json'
         if not os.path.exists(gt_range_path):
             if model1_res[2] == model1_res[3]:
                 second_found_formu, first_found_formul, is_found = secc(second_found_formu, first_found_formul, formula)
@@ -4780,7 +5000,7 @@ def check_best():
         if not os.path.exists(found_range_path):
             # print('not exists: test_refcell_position')
             continue
-        
+
         # print('gt_exists', os.path.exists(gt_cell_path))
         # print('found_exists', os.path.exists(ref_cell_path))
 
@@ -4807,10 +5027,10 @@ def check_best():
             continue
         # if not os.path.exists(root_path + 'sorted_second_block/' + formula_token + '.npy'):
         # if not os.path.exists(root_path + 'second_tile_res_new/' + formula_token + '.npy'):
-            # print('second_tile_res_new not exists')
-            # second_not_found += 1
-            # continue
-            # break
+        # print('second_tile_res_new not exists')
+        # second_not_found += 1
+        # continue
+        # break
         second_best = {}
         if os.path.exists(root_path + 'sorted_second_block/' + formula_token + '.npy'):
             second_best = np.load(root_path + 'sorted_second_block/' + formula_token + '.npy', allow_pickle=True).item()
@@ -4836,7 +5056,7 @@ def check_best():
         # print('second_best', second_best)
 
         found_fail = False
-        
+
         for index, rc in enumerate(found_ref_cell):
             print("****")
             print('rc', rc)
@@ -4858,36 +5078,37 @@ def check_best():
                     if 'best_row_col' in second_best[str(rc['R']) + '---' + str(rc['C'])]:
                         second_best[str(rc['R']) + '---' + str(rc['C'])].pop('best_row_col')
                     # print('second_best', second_best[str(rc['R']) + '---' + str(rc['C'])])
-                    best_tuple = sorted(second_best[str(rc['R']) + '---' + str(rc['C'])].items(), key=lambda x:x[1])[0]
+                    best_tuple = sorted(second_best[str(rc['R']) + '---' + str(rc['C'])].items(), key=lambda x: x[1])[0]
                     found_rc = best_tuple[0]
                     if gt_rc not in second_best[str(rc['R']) + '---' + str(rc['C'])]:
                         is_gt_not_in_second = True
                 # print(second_best[str(rc['R']) + '---' + str(rc['C'])], second_best[str(rc['R']) + '---' + str(rc['C'])])
-    
-            
+
             first_cand = []
             first_found = []
             # print("first_best[str(rc['R']) + '---' + str(rc['C'])]", first_best[str(rc['R']) + '---' + str(rc['C'])])
             for one_of_four in first_best[str(rc['R']) + '---' + str(rc['C'])]:
-                first_found.append(sorted(first_best[str(rc['R']) + '---' + str(rc['C'])][one_of_four].items(), key=lambda x:x[1])[0][0])
+                first_found.append(
+                    sorted(first_best[str(rc['R']) + '---' + str(rc['C'])][one_of_four].items(), key=lambda x: x[1])[0][
+                        0])
                 first_cand += list(first_best[str(rc['R']) + '---' + str(rc['C'])][one_of_four].keys())
             first_cand = list(set(first_cand))
             print('first_found', first_found)
             print('first_cand', first_cand)
 
             # found_rc = str(found_ref_cell[index]['R']) + '---' + str(found_ref_cell[index]['C'])
-            
+
             # print('gt_rc', gt_rc)
             if gt_ref_cell[index]['R'] % 100 == 0:
-                first_row = int(gt_ref_cell[index]['R']-100)+1
+                first_row = int(gt_ref_cell[index]['R'] - 100) + 1
             else:
-                first_row = int(gt_ref_cell[index]['R']/100)*100 + 1
-            
+                first_row = int(gt_ref_cell[index]['R'] / 100) * 100 + 1
+
             if gt_ref_cell[index]['C'] % 10 == 0:
-                first_col = int(gt_ref_cell[index]['C']-10)+1
+                first_col = int(gt_ref_cell[index]['C'] - 10) + 1
             else:
-                first_col = int(gt_ref_cell[index]['C']/10)*10 + 1
-            gt_first_rc = str(first_row) + "---"  + str(first_col)
+                first_col = int(gt_ref_cell[index]['C'] / 10) * 10 + 1
+            gt_first_rc = str(first_row) + "---" + str(first_col)
             print('gt_first_rc', gt_first_rc)
             # print('first is in', gt_first_rc in first_found)
             print('gt_rc', gt_rc)
@@ -4896,18 +5117,22 @@ def check_best():
             gt_c = gt_ref_cell[index]['C']
             if found_rc != gt_rc:
                 second_is_all_same = False
-                if gt_first_rc in first_found and not formula['r1c1'] in crosstable_formulas and model1_res[4] == True and found_rc != '*1---*1' and found_rc != '#1---#1' and not is_gt_not_in_second:
+                if gt_first_rc in first_found and not formula['r1c1'] in crosstable_formulas and model1_res[
+                    4] == True and found_rc != '*1---*1' and found_rc != '#1---#1' and not is_gt_not_in_second:
                     fail_res[formula_token + '#####' + str(rc['R']) + '---' + str(rc['C'])] = {}
                     fail_res[formula_token + '#####' + str(rc['R']) + '---' + str(rc['C'])]['model_res'] = model1_res
                     fail_res[formula_token + '#####' + str(rc['R']) + '---' + str(rc['C'])]['found_rc'] = found_rc
-                    fail_res[formula_token + '#####' + str(rc['R']) + '---' + str(rc['C'])]['found_score'] = float(second_best[str(rc['R']) + '---' + str(rc['C'])][found_rc])
+                    fail_res[formula_token + '#####' + str(rc['R']) + '---' + str(rc['C'])]['found_score'] = float(
+                        second_best[str(rc['R']) + '---' + str(rc['C'])][found_rc])
                     fail_res[formula_token + '#####' + str(rc['R']) + '---' + str(rc['C'])]['gt_rc'] = gt_rc
-                    fail_res[formula_token + '#####' + str(rc['R']) + '---' + str(rc['C'])]['gt_score'] = float(second_best[str(rc['R']) + '---' + str(rc['C'])][gt_rc])
-                    sorted_tuples = sorted(second_best[str(rc['R']) + '---' + str(rc['C'])].items(), key=lambda x:x[1])
+                    fail_res[formula_token + '#####' + str(rc['R']) + '---' + str(rc['C'])]['gt_score'] = float(
+                        second_best[str(rc['R']) + '---' + str(rc['C'])][gt_rc])
+                    sorted_tuples = sorted(second_best[str(rc['R']) + '---' + str(rc['C'])].items(), key=lambda x: x[1])
                     for index1, item_tuple in enumerate(sorted_tuples):
                         if item_tuple[0] == gt_rc:
-                            fail_res[formula_token + '#####' + str(rc['R']) + '---' + str(rc['C'])]['gt_rank'] = index1 + 1
-                
+                            fail_res[formula_token + '#####' + str(rc['R']) + '---' + str(rc['C'])][
+                                'gt_rank'] = index1 + 1
+
 
             else:
                 second_found_ref += 1
@@ -4915,21 +5140,21 @@ def check_best():
             if gt_first_rc not in first_found:
                 first_is_all_same = False
 
-            # if not (found_first_r <= gt_r and found_first_r + 100 > gt_r and found_first_c <= gt_c and found_first_c + 10 > gt_c):
-                
+                # if not (found_first_r <= gt_r and found_first_r + 100 > gt_r and found_first_c <= gt_c and found_first_c + 10 > gt_c):
+
                 if '!' in formula['r1c1']:
-                #     first_mul_ref += 1
+                    #     first_mul_ref += 1
                     first_is_mul = True
                 if gt_first_rc not in first_cand:
                     first_is_out = True
                     first_out_ref += 1
-    
+
             else:
                 first_found_ref += 1
             all_ref += 1
 
         # if not first_is_all_same:
-            # break
+        # break
         if is_kw_not_in_best_ref:
             kw_not_in_best_formu += 1
             need_run_list.append(formula_token)
@@ -4971,7 +5196,7 @@ def check_best():
             else:
                 if formula['r1c1'] in crosstable_formulas:
                     first_multi_fail += 1
-        
+
         if not first_is_all_same:
             first_fail += 1
             if first_is_out:
@@ -4991,35 +5216,35 @@ def check_best():
         #     if count <= 400:
         #         continue
         #     print(model1_res)
-            
+
         #     break
         # if not first_is_all_same and not formula['r1c1'] in crosstable_formulas:
         # if model1_res[4] == True and first_is_all_same and not second_is_all_same and not is_kw_not_in_best_ref and not is_gt_not_in_second:
-            # if gt_first_rc in first_found and not formula['r1c1'] in crosstable_formulas and model1_res[4] == True:
-                
+        # if gt_first_rc in first_found and not formula['r1c1'] in crosstable_formulas and model1_res[4] == True:
+
         # if is_gt_not_in_second and first_is_all_same:
         #     print("is_gt_not_in_second")
         #     print(formula_token)
         #     break
-            # if count <= 2:
-            #     count +=1
-            # print(model1_res)
-            # #     continue
-            # count +=1
-            # print('first res', first_best)
-            # print("######## fail")
-            # print('second_best', second_best)
-            # print('formula_token', formula_token)
-            # print(model1_res[2], model1_res[3])
-            # print('found_rc', found_rc)
-            # print('gt_rc', gt_rc)
-            # print("first_is_out", first_is_out)
-            # print(gt_rc not in second_best[str(rc['R']) + '---' + str(rc['C'])])
-            # print(second_best[str(rc['R']) + '---' + str(rc['C'])][gt_rc])
-            # print(second_best[str(rc['R']) + '---' + str(rc['C'])][found_rc])
-            # tmp_stat += 1
-            
-            # break
+        # if count <= 2:
+        #     count +=1
+        # print(model1_res)
+        # #     continue
+        # count +=1
+        # print('first res', first_best)
+        # print("######## fail")
+        # print('second_best', second_best)
+        # print('formula_token', formula_token)
+        # print(model1_res[2], model1_res[3])
+        # print('found_rc', found_rc)
+        # print('gt_rc', gt_rc)
+        # print("first_is_out", first_is_out)
+        # print(gt_rc not in second_best[str(rc['R']) + '---' + str(rc['C'])])
+        # print(second_best[str(rc['R']) + '---' + str(rc['C'])][gt_rc])
+        # print(second_best[str(rc['R']) + '---' + str(rc['C'])][found_rc])
+        # tmp_stat += 1
+
+        # break
         # if second_is_all_same and formula['r1c1'] in crosstable_formulas:
         #     print(formula)
         #     break
@@ -5041,9 +5266,9 @@ def check_best():
     print("first_mul_ref", first_mul_ref)
     print("first_out_mul_ref", out_and_multitable_ref)
     print("second_found_ref", second_found_ref)
-    print("kw_not_in_best_ref", kw_not_in_best_ref , all_ref - second_found_ref)
-    print("not_in_best_ref", not_in_best_ref , all_ref - second_found_ref - kw_not_in_best_ref)
-    
+    print("kw_not_in_best_ref", kw_not_in_best_ref, all_ref - second_found_ref)
+    print("not_in_best_ref", not_in_best_ref, all_ref - second_found_ref - kw_not_in_best_ref)
+
     print("all_ref", all_ref)
     print('#############')
     print('template fail:', template_fail)
@@ -5070,22 +5295,25 @@ def check_best():
     print('tmp_stat', tmp_stat)
     # with open("second_not_found.json", 'w') as f:
     #     json.dump(second_not_found, f)
+
+
 def temp():
     formula_token = '112937346618466950862670149644017255835-drv2624-and-drv2625-configuration-tool-and-design-equations_2d00_awa.xlsx---Auto-Calibration---12---3'
-    first_res = np.load(root_path + 'first_tile_res_new/' + formula_token  +'.npy', allow_pickle=True).item()
-    second_res = np.load(root_path + 'second_tile_res_new/' + formula_token  +'.npy', allow_pickle=True).item()
+    first_res = np.load(root_path + 'first_tile_res_new/' + formula_token + '.npy', allow_pickle=True).item()
+    second_res = np.load(root_path + 'second_tile_res_new/' + formula_token + '.npy', allow_pickle=True).item()
     pprint.pprint(first_res)
     # print('second_res', second_res)
     for itemkey in second_res:
-    #     print("###################################")
+        #     print("###################################")
         print('origin key', itemkey)
         best_distance = second_res[itemkey].pop('best_distance')
         best_row_col = second_res[itemkey].pop('best_row_col')
-       
+
         print('best_distance', best_distance)
         print('best_row_col', best_row_col)
         # break
     #     pprint.pprint(sorted(second_res[itemkey].items(), key=lambda x:x[1]))
+
 
 def remove_imdata():
     after_filelist = os.listdir(root_path + 'demo_after_features')
@@ -5096,35 +5324,36 @@ def remove_imdata():
             os.remove(rm_path)
 
     before_filelist = os.listdir(root_path + 'demo_before_features')
-    for filename in list(set(after_filelist)|set(before_filelist)):
+    for filename in list(set(after_filelist) | set(before_filelist)):
         rm_path = 'demo_tile_features/' + filename.replace(".npy", ".json")
         if os.path.exists(rm_path):
-            print('remove',rm_path)
+            print('remove', rm_path)
             os.remove(rm_path)
+
 
 def look_befor_after_time():
     filelist = os.listdir("/datadrive-2/data/fortune500_test/after_time_test")
     all_before_time = 0
     all_after_time = 0
     for filename in filelist:
-        with open("/datadrive-2/data/fortune500_test/after_time_test/"+filename, 'r') as f:
+        with open("/datadrive-2/data/fortune500_test/after_time_test/" + filename, 'r') as f:
             timeres = json.load(f)
 
         before_time = timeres['before_time']
         after_time = timeres['after_time']
 
         all_before_time += before_time
-        all_after_time +=after_time
+        all_after_time += after_time
 
-    print('before_time', all_before_time/len(filelist))
-    print('after_time', all_after_time/len(filelist))
+    print('before_time', all_before_time / len(filelist))
+    print('after_time', all_after_time / len(filelist))
 
     all_compare_time1 = 0
     filelist = os.listdir(root_path + 'sorted_first_block/')
     for index, filename in enumerate(filelist):
         if index == 49:
             break
-        timeres = np.load(root_path + 'sorted_first_block/'+filename, allow_pickle=True).item()
+        timeres = np.load(root_path + 'sorted_first_block/' + filename, allow_pickle=True).item()
         compare_time = timeres['time']
         all_compare_time1 += compare_time
     print('compare_time1', all_compare_time1 / 50)
@@ -5134,7 +5363,7 @@ def look_befor_after_time():
     for index, filename in enumerate(filelist):
         if index == 49:
             break
-        timeres = np.load(root_path + 'sorted_second_block/'+filename, allow_pickle=True).item()
+        timeres = np.load(root_path + 'sorted_second_block/' + filename, allow_pickle=True).item()
         compare_time = timeres['time']
         all_compare_time2 += compare_time
     print('compare_time2', all_compare_time2 / 50)
@@ -5146,36 +5375,37 @@ def look_befor_after_time():
             rows = json.load(f)
         with open(root_path + 'tile_cols/' + filename, 'r') as f:
             cols = json.load(f)
-        tile_num = len(rows)*len(cols)
+        tile_num = len(rows) * len(cols)
         avg_tilenum += tile_num
-    print('avg_tilenum', avg_tilenum/len(filelist))
+    print('avg_tilenum', avg_tilenum / len(filelist))
     print('all timenum', avg_tilenum)
 
+
 def look_template():
-    with open('r1c12template_fortune500_constant.json','r') as f:
+    with open('r1c12template_fortune500_constant.json', 'r') as f:
         r1c12template_fortune500_constant = json.load(f)
-    with open('r1c12template_fortune500.json','r') as f:
+    with open('r1c12template_fortune500.json', 'r') as f:
         r1c12template_fortune500 = json.load(f)
     with open("Formulas_fortune500_with_id.json", 'r') as f:
         formulas = json.load(f)
 
     count = 0
-    for index,formula in enumerate(formulas):
+    for index, formula in enumerate(formulas):
         is_found = False
         suc = False
-        
+
         formula_token = formula['filesheet'] + '---' + str(formula['fr']) + '---' + str(formula['fc'])
-        
-        if not os.path.exists(root_path+'model1_res/'+formula_token + '.json'):
+
+        if not os.path.exists(root_path + 'model1_res/' + formula_token + '.json'):
             continue
-        if not os.path.exists(root_path+'afterfeature_test/'+formula_token + '.npy'):
+        if not os.path.exists(root_path + 'after_feature_test/' + formula_token + '.npy'):
             continue
         print('\033[1;35m index ' + str(index) + ' ' + str(len(formulas)) + ' ' + formula_token + '\033[0m')
 
         if 'RC[-1]+ROUND(10*R' in formula['r1c1']:
             except_log_num += 1
             continue
-        with open(root_path+'model1_res/'+formula_token + '.json', 'r') as f:
+        with open(root_path + 'model1_res/' + formula_token + '.json', 'r') as f:
             model1_res = json.load(f)
 
         if formula['r1c1'] not in r1c12template_fortune500:
@@ -5232,7 +5462,7 @@ def analyze_fail_res_3159():
             gt_rank_dict[fail_res_3159[item]['gt_rank']] = 0
         gt_rank_dict[fail_res_3159[item]['gt_rank']] += 1
         rank_list.append(fail_res_3159[item]['gt_rank'])
-        score_del = fail_res_3159[item]['gt_score']-fail_res_3159[item]['found_score']
+        score_del = fail_res_3159[item]['gt_score'] - fail_res_3159[item]['found_score']
         score_del_list.append(score_del)
         if score_del < 2:
             score_del_dict['0-2'] += 1
@@ -5248,9 +5478,10 @@ def analyze_fail_res_3159():
         found_r = int(fail_res_3159[item]['found_rc'].split('---')[0])
         found_c = int(fail_res_3159[item]['found_rc'].split('---')[1])
 
-        distance = ((gt_r - found_r)**2 + (gt_c - found_c)**2)**0.5
+        distance = ((gt_r - found_r) ** 2 + (gt_c - found_c) ** 2) ** 0.5
         distance_list.append(distance)
-        if fail_res_3159[item]['gt_score'] == fail_res_3159[item]['found_score'] and fail_res_3159[item]['gt_score'] == 0:
+        if fail_res_3159[item]['gt_score'] == fail_res_3159[item]['found_score'] and fail_res_3159[item][
+            'gt_score'] == 0:
             score_0 += 1
         if distance < 5:
             distance_dict['0-5'] += 1
@@ -5270,7 +5501,8 @@ def analyze_fail_res_3159():
         else:
             rank_dict['20+'] += 1
 
-        delta_ration = (fail_res_3159[item]['gt_score'] - fail_res_3159[item]['found_score'])/(fail_res_3159[item]['found_score']+min_del)
+        delta_ration = (fail_res_3159[item]['gt_score'] - fail_res_3159[item]['found_score']) / (
+                fail_res_3159[item]['found_score'] + min_del)
         score_del_ratio_list.append(delta_ration)
         if delta_ration < 0.5:
             delta_ratio_dict['0-0.5'] += 1
@@ -5296,10 +5528,11 @@ def analyze_fail_res_3159():
     print('score_del_dict', score_del_dict)
     print('distance_dict', distance_dict)
     print('rank_dict', rank_dict)
-    
+
     print('delta_ratio_dict', delta_ratio_dict)
     print('all', len(fail_res_3159))
     print('score_0', score_0)
+
 
 def look_copy_distance():
     with open("fail_res_3159.json", 'r') as f:
@@ -5322,26 +5555,29 @@ def look_copy_distance():
         gt_rc = fail_res[item_key]['gt_rc']
 
         selected_key = random.choice(list(fail_res.keys()))
-        while selected_key.split("---")[1] == item_key.split('---')[1] or selected_key.split("---")[0] == item_key.split('---')[0]:
+        while selected_key.split("---")[1] == item_key.split('---')[1] or selected_key.split("---")[0] == \
+                item_key.split('---')[0]:
             selected_key = random.choice(list(fail_res.keys()))
 
-        origin_filesheet = model_res[0].split("---")[0] +'---'+ model_res[0].split("---")[1]
-        found_filesheet = model_res[1].split("---")[0] +'---'+ model_res[1].split("---")[1]
+        origin_filesheet = model_res[0].split("---")[0] + '---' + model_res[0].split("---")[1]
+        found_filesheet = model_res[1].split("---")[0] + '---' + model_res[1].split("---")[1]
 
         target_rc = item_key.split("#####")[1]
         target_ref_cell_token = found_filesheet + '---' + target_rc
         found_ref_cell_token = origin_filesheet + '---' + found_rc
         gt_ref_cell_token = origin_filesheet + '---' + gt_rc
-        selected_cell_token =  fail_res[selected_key]['model_res'][0].split("---")[0] + '---' + fail_res[selected_key]['model_res'][0].split("---")[1] + '---' + fail_res[selected_key]['found_rc']
+        selected_cell_token = fail_res[selected_key]['model_res'][0].split("---")[0] + '---' + \
+                              fail_res[selected_key]['model_res'][0].split("---")[1] + '---' + fail_res[selected_key][
+                                  'found_rc']
 
         target_feature = np.load(root_path + 'demo_after_features/' + target_ref_cell_token + '.npy', allow_pickle=True)
         found_feature = np.load(root_path + 'demo_after_features/' + found_ref_cell_token + '.npy', allow_pickle=True)
         gt_feature = np.load(root_path + 'demo_after_features/' + gt_ref_cell_token + '.npy', allow_pickle=True)
         selected_feature = np.load(root_path + 'demo_after_features/' + selected_cell_token + '.npy', allow_pickle=True)
 
-        target2gt_distance = euclidean(target_feature, gt_feature) # content difference
-        found2gt_distance = euclidean(found_feature, gt_feature) # shift difference
-        selected2target_distance = euclidean(target_feature, selected_feature) 
+        target2gt_distance = euclidean(target_feature, gt_feature)  # content difference
+        found2gt_distance = euclidean(found_feature, gt_feature)  # shift difference
+        selected2target_distance = euclidean(target_feature, selected_feature)
 
         print("##########")
         print('target2gt_distance', target2gt_distance)
@@ -5364,7 +5600,6 @@ def look_copy_distance():
         else:
             same += 1
 
-
     large_list = []
     small_list = []
     large_better = 0
@@ -5385,12 +5620,14 @@ def look_copy_distance():
 
             large_list.append(position2distance_dict[filesheet][rc][large_position_dis])
             small_list.append(position2distance_dict[filesheet][rc][small_position_dis])
-            if position2distance_dict[filesheet][rc][large_position_dis] > position2distance_dict[filesheet][rc][small_position_dis]:
+            if position2distance_dict[filesheet][rc][large_position_dis] > position2distance_dict[filesheet][rc][
+                small_position_dis]:
                 large_better += 1
-            elif position2distance_dict[filesheet][rc][large_position_dis] < position2distance_dict[filesheet][rc][small_position_dis]:
+            elif position2distance_dict[filesheet][rc][large_position_dis] < position2distance_dict[filesheet][rc][
+                small_position_dis]:
                 small_better += 1
             else:
-                same2 +=1
+                same2 += 1
 
             large_list.append(position2distance_dict[filesheet][rc][large_position_dis])
             small_list.append(position2distance_dict[filesheet][rc][small_position_dis])
@@ -5439,14 +5676,14 @@ def check_shift():
         not_invalid_token = json.load(f)
     print("not_invalid_token", len(not_invalid_token))
     for filename in not_invalid_token:
-        formula_token = filename.replace('.npy','')
+        formula_token = filename.replace('.npy', '')
         split_list = formula_token.split("---")
         filesheet = split_list[0] + '---' + split_list[1]
         rc = split_list[2] + '---' + split_list[3]
         if filesheet not in filesheet2rc:
             filesheet2rc[filesheet] = []
         filesheet2rc[filesheet].append(rc)
-    
+
     # max_check = 1000
     count = 0
     position2distance = []
@@ -5459,11 +5696,12 @@ def check_shift():
         #     break
         one_filesheet_num = 0
         for rc in filesheet2rc[filesheet]:
-            
+
             # if count == max_check:
             #     break
             try:
-                first_feature = np.load(root_path + 'demo_after_features/' + filesheet + '---' + rc + ".npy", allow_pickle=True)
+                first_feature = np.load(root_path + 'demo_after_features/' + filesheet + '---' + rc + ".npy",
+                                        allow_pickle=True)
             except:
                 continue
             # if euclidean(first_feature, invalid_feature) == 0:
@@ -5477,16 +5715,15 @@ def check_shift():
                 #     break
                 if rc == other_rc:
                     continue
-                
+
                 r = int(rc.split('---')[0])
                 c = int(rc.split('---')[1])
                 other_r = int(other_rc.split('---')[0])
                 other_c = int(other_rc.split('---')[1])
-                position_distance = ((other_r - r)**2 + (other_c - c)**2)**0.5
-                
-               
-                
-                second_feature = np.load(root_path + 'demo_after_features/' + filesheet + '---' + other_rc + ".npy", allow_pickle=True)
+                position_distance = ((other_r - r) ** 2 + (other_c - c) ** 2) ** 0.5
+
+                second_feature = np.load(root_path + 'demo_after_features/' + filesheet + '---' + other_rc + ".npy",
+                                         allow_pickle=True)
                 # if euclidean(second_feature, invalid_feature) == 0:
                 #     continue
                 print('#############')
@@ -5514,6 +5751,7 @@ def check_shift():
     with open('position2distance_dict.json', 'w') as f:
         json.dump(position2distance_dict, f)
 
+
 def finetuning_shift_features():
     # with open("shift_finetune_triples.json", 'r') as f:
     # with open("specific_finetune_triples.json", 'r') as f:
@@ -5527,19 +5765,20 @@ def finetuning_shift_features():
     #     specific_finetune_triples = json.load(f)
     with open("dedup_training_triples.json", 'r') as f:
         specific_finetune_triples = json.load(f)
+
     # shift_content_finetune_triples = specific_finetune_triples_1_5 + specific_finetune_triples_5_10 + specific_finetune_triples
     def one_process(thread_id, batch_num):
         finetune_filenames = set()
-        batch_len = int(len(specific_finetune_triples)/batch_num)
+        batch_len = int(len(specific_finetune_triples) / batch_num)
         for index, triple in enumerate(specific_finetune_triples):
             # if index % 1000 == 0:
             #     if len(os.listdir(root_path + 'demo_tile_features_specific/')) >= 100000:
             #         return
             if thread_id != batch_num:
-                if(index <= batch_len * (thread_id - 1 ) or index > batch_len * thread_id):
+                if (index <= batch_len * (thread_id - 1) or index > batch_len * thread_id):
                     continue
             else:
-                if index <= batch_len * (thread_id - 1 ):
+                if index <= batch_len * (thread_id - 1):
                     continue
             print(index, len(specific_finetune_triples))
             for token in triple:
@@ -5548,36 +5787,39 @@ def finetuning_shift_features():
                 filename = filename.split("/")[-1]
                 row = int(row)
                 col = int(col)
-                if os.path.exists( root_path + 'training_tile_features/' + filename + '---' + sheetname + '---' + str(row) + '---' + str(col) + '.json'):
+                if os.path.exists(root_path + 'training_tile_features/' + filename + '---' + sheetname + '---' + str(
+                        row) + '---' + str(col) + '.json'):
                     continue
-                generate_one_demo_features(filename, sheetname, row, col, save_path = root_path + 'training_tile_features/', cross=True)
+                generate_one_demo_features(filename, sheetname, row, col,
+                                           save_path=root_path + 'training_tile_features/', cross=True)
             #     break
             # break
+
     # one_process(1,1)
     process = [
-        Process(target=one_process, args=(1,20)),
-        Process(target=one_process, args=(2,20)), 
-        Process(target=one_process, args=(3,20)),
-        Process(target=one_process, args=(4,20)), 
-        Process(target=one_process, args=(5,20)),
-        Process(target=one_process, args=(6,20)), 
-        Process(target=one_process, args=(7,20)),
-        Process(target=one_process, args=(8,20)), 
-        Process(target=one_process, args=(9,20)),
-        Process(target=one_process, args=(10,20)), 
-        Process(target=one_process, args=(11,20)),
-        Process(target=one_process, args=(12,20)), 
-        Process(target=one_process,args=(13,20)),
-        Process(target=one_process, args=(14,20)), 
-        Process(target=one_process, args=(15,20)),
-        Process(target=one_process, args=(16,20)), 
-        Process(target=one_process, args=(17,20)),
-        Process(target=one_process, args=(18,20)), 
-        Process(target=one_process, args=(19,20)), 
-        Process(target=one_process, args=(20,20)), 
+        Process(target=one_process, args=(1, 20)),
+        Process(target=one_process, args=(2, 20)),
+        Process(target=one_process, args=(3, 20)),
+        Process(target=one_process, args=(4, 20)),
+        Process(target=one_process, args=(5, 20)),
+        Process(target=one_process, args=(6, 20)),
+        Process(target=one_process, args=(7, 20)),
+        Process(target=one_process, args=(8, 20)),
+        Process(target=one_process, args=(9, 20)),
+        Process(target=one_process, args=(10, 20)),
+        Process(target=one_process, args=(11, 20)),
+        Process(target=one_process, args=(12, 20)),
+        Process(target=one_process, args=(13, 20)),
+        Process(target=one_process, args=(14, 20)),
+        Process(target=one_process, args=(15, 20)),
+        Process(target=one_process, args=(16, 20)),
+        Process(target=one_process, args=(17, 20)),
+        Process(target=one_process, args=(18, 20)),
+        Process(target=one_process, args=(19, 20)),
+        Process(target=one_process, args=(20, 20)),
     ]
     [p.start() for p in process]  # 开启了两个进程
-    [p.join() for p in process]   # 等待两个进程依次结束   
+    [p.join() for p in process]  # 等待两个进程依次结束
     # with open('shift_finetune_filenames.json', 'w') as f:
     #     json.dump(list(finetune_filenames), f)
 
@@ -5589,17 +5831,22 @@ def finetuning_shift_features():
     #     print('/datadrive/projects/Demo/fixed_workbook_json/'+item.split('/')[-1] + '.json')
     #     print('fix_workbook_json', os.path.exists('/datadrive/projects/Demo/fixed_workbook_json/'+item.split('/')[-1] + '.json'))
     #     break
-def generate_one_before_feature(workbook_name, sheetname, row, col, source_root_path = root_path + 'demo_tile_features_shift/', saved_root_path=root_path + 'demo_before_features/', bert_dict_file='/datadrive/data/bert_dict/bert_dict.json', bert_dict_path="/datadrive-2/data/bert_dict/", content_template_dict_file="json_data/content_temp_dict_1.json", mask=2):
+
+
+def generate_one_before_feature(workbook_name, sheetname, row, col,
+                                source_root_path=root_path + 'demo_tile_features_shift/',
+                                saved_root_path=root_path + 'demo_before_features/',
+                                bert_dict_file='data_drive/data_one/bert_dict/bert_dict.json',
+                                bert_dict_path="data_drive/data_two/bert_dict",
+                                content_template_dict_file="json_data/content_temp_dict_1.json", mask=2):
     formula_token = workbook_name + '---' + sheetname + '---' + str(row) + '---' + str(col)
+
+    bert_dict = {}
     try:
-        with open(bert_dict_file, 'r') as f:
-            bert_dict = json.load(f)
-    except:
-        bert_dict = {}
-    try:
-        with open(content_template_dict, 'r') as f:
+        with open(content_template_dict_file, 'r') as f:
             content_tem_dict = json.load(f)
-    except:
+    except Exception as e:
+        print(e)
         content_tem_dict = {}
     try:
         with open(source_root_path + formula_token + '.json', 'r') as f:
@@ -5608,11 +5855,14 @@ def generate_one_before_feature(workbook_name, sheetname, row, col, source_root_
         print('error:generate_one_before_feature')
         print(e)
         return
-    temp_time1 = time.time()
     temp_bert_dict = {}
-    feature_nparray, temp_bert_dict = get_feature_vector_with_bert_keyw(origin_feature,  bert_dict, content_tem_dict, mask, bert_dict_path=bert_dict_path, bert_dict_file=bert_dict_file, temp_bert_dict=temp_bert_dict)
+    feature_nparray, temp_bert_dict = get_feature_vector_with_bert_keyw(origin_feature, bert_dict, content_tem_dict,
+                                                                        mask, bert_dict_path=bert_dict_path,
+                                                                        bert_dict_file=bert_dict_file,
+                                                                        temp_bert_dict=temp_bert_dict)
     feature_nparray = np.array(feature_nparray)
     np.save(saved_root_path + formula_token + '.npy', feature_nparray)
+
 
 def generate_test_before_feature_for_finetune(mask):
     with open('/datadrive/data/bert_dict/bert_dict.json', 'r') as f:
@@ -5659,11 +5909,11 @@ def generate_test_before_feature_for_finetune(mask):
         demo_before_feature_path = root_path + 'demo_before_features_mask_fix/'
     for index, filename in enumerate(file2sheet2rc):
         print(index, len(file2sheet2rc))
-        if os.path.exists('../Demo/fix_fortune500/'+filename + '.json'):
-            with open('../Demo/fix_fortune500/'+filename + '.json', 'r') as f:
+        if os.path.exists('../Demo/fix_fortune500/' + filename + '.json'):
+            with open('../Demo/fix_fortune500/' + filename + '.json', 'r') as f:
                 workbook_json = json.load(f)
-        elif os.path.exists('../Demo/origin_fortune500_workbook_json/'+filename + '.json'):
-            with open('../Demo/origin_fortune500_workbook_json/'+filename + '.json', 'r') as f:
+        elif os.path.exists('../Demo/origin_fortune500_workbook_json/' + filename + '.json'):
+            with open('../Demo/origin_fortune500_workbook_json/' + filename + '.json', 'r') as f:
                 workbook_json = json.load(f)
         else:
             continue
@@ -5672,17 +5922,25 @@ def generate_test_before_feature_for_finetune(mask):
                 row = int(row_col[0])
                 col = int(row_col[1])
                 formula_token = filename + '---' + sheetname + '---' + row_col[0] + '---' + row_col[1]
-                if not os.path.exists(demo_tile_feature_path +  formula_token + '.json'):
-                    generate_demo_features(filename, sheetname, workbook_json,row, col, save_path=demo_tile_feature_path, is_look=True)
+                if not os.path.exists(demo_tile_feature_path + formula_token + '.json'):
+                    generate_demo_features(filename, sheetname, workbook_json, row, col,
+                                           save_path=demo_tile_feature_path, is_look=True)
                 if not os.path.exists(demo_before_feature_path + formula_token + '.npy'):
-                    generate_one_before_feaure(formula_token, bert_dict, content_tem_dict, mask, source_root_path = demo_tile_feature_path, saved_root_path=demo_before_feature_path)
+                    generate_one_before_feaure(formula_token, bert_dict, content_tem_dict, mask,
+                                               source_root_path=demo_tile_feature_path,
+                                               saved_root_path=demo_before_feature_path)
+
 
 def change_word_to_save_word(word):
     save_word = word.replace('/', '*#*line*#*')
     return save_word
+
+
 def change_save_word_to_word(save_word):
     word = save_word.replace('*#*line*#*', '/')
     return word
+
+
 def generate_bert_dict():
     with open('/datadrive/data/bert_dict/bert_dict.json', 'r') as f:
         bert_dict = json.load(f)
@@ -5697,6 +5955,7 @@ def generate_bert_dict():
     with open('/datadrive/data/bert_dict/bert_dict.json', 'w') as f:
         json.dump(new_bert_dict, f)
 
+
 def check_shift_feature():
     saved_root_path = root_path + 'training_before_shift_c2/'
     source_root_path = root_path + 'demo_tile_features_shift/'
@@ -5707,9 +5966,9 @@ def check_shift_feature():
         need_num = 0
         if os.path.exists(saved_root_path + item.replace('.json', '.npy')):
             count += 1
-            first_filejson =item
+            first_filejson = item
             first_filenpy = first_filejson.replace('.json', '.npy')
-    
+
             with open(source_root_path + first_filejson, 'r') as f:
                 filejson = json.load(f)
             for index, item in enumerate(filejson):
@@ -5745,6 +6004,8 @@ def check_shift_feature():
     #         continue
     # print(filejson['sheetfeatures'])
     # print(before_feature.shape)
+
+
 def generate_similar_sheet_eval_data():
     with open("../Mondrian-master/filtered_list.json", 'r') as f:
         filtered_list = json.load(f)
@@ -5758,12 +6019,12 @@ def generate_similar_sheet_eval_data():
     ne = 0
     for index, filesheet in enumerate(filtered_list):
         print(index, len(filtered_list))
-        sheetname = filesheet.split('---')[1].replace('.csv','')
+        sheetname = filesheet.split('---')[1].replace('.csv', '')
         if sheetname not in sheetname_2_file:
             ne += 1
             print('not exists in devided', filesheet, sheetname)
             continue
-        
+
         for clst in sheetname_2_file[sheetname]:
             if filesheet in clst['filenames']:
                 new_clst = []
@@ -5771,7 +6032,7 @@ def generate_similar_sheet_eval_data():
                     new_clst.append(filename + '---' + sheetname)
                 new_clst.sort()
                 is_in = False
-                
+
                 for other_clst in cluster:
                     if len(other_clst) != len(new_clst):
                         continue
@@ -5789,8 +6050,9 @@ def generate_similar_sheet_eval_data():
                     continue
                 else:
                     cluster.append(new_clst)
-    print('cluster', cluster)     
+    print('cluster', cluster)
     print('ne', ne)
+
 
 def look_loss_val():
     # first_losslog = np.load("/datadrive-2/data/finetune_specific_l2_new/losslog.npy", allow_pickle=True).item()
@@ -5800,17 +6062,17 @@ def look_loss_val():
     # print('first_losslog', first_losslog)
     # print('second_losslog', second_losslog)
     # print('thirld_losslog', thirld_losslog)
-    
+
     loss_list = []
-    first_y =[float(first_losslog[item][0].detach()) for item in first_losslog]
+    first_y = [float(first_losslog[item][0].detach()) for item in first_losslog]
     first_x = list(first_losslog.keys())
     # second_y =[float(second_losslog[item][0].detach()) for item in second_losslog]
     # second_x = list(second_losslog.keys())
     # third_y =[float(thirld_losslog[item][0].detach()) for item in thirld_losslog]
     # third_x = list(thirld_losslog.keys())
 
-    epoch_x = range(1,11)
-    for epoch_id in range(1,11):
+    epoch_x = range(1, 11)
+    for epoch_id in range(1, 11):
         loss_list.append(float(first_losslog[epoch_id][0].detach()))
     # epoch_x = range(1,64)
     # for epoch_id in range(1,23):
@@ -5844,18 +6106,21 @@ def look_loss_val():
 
     print('filelist', len(filelist))
     print('sheetlist', len(sheetlist))
-        # loss_list.append(first_losslog[epoch_id][0].detach())
+    # loss_list.append(first_losslog[epoch_id][0].detach())
+
+
 def look_accuracy():
     # filelist = os.listdir("/datadrive-3/data/fortune500_test/validate_cross/")
     filelist = os.listdir("/datadrive-3/data/fortune500_test/validate/")
     filelist.sort()
     for filename in filelist:
-        
+
         if os.path.exists("/datadrive-3/data/fortune500_test/validate/" + filename + '/accuracy.json'):
             with open("/datadrive-3/data/fortune500_test/validate/" + filename + '/accuracy.json', 'r') as f:
                 accuracy = json.load(f)
                 print(filename)
                 print(accuracy)
+
 
 def extract_sheet_wh_info(sheetname, wb_json):
     wb_json = wb_json['Sheets']
@@ -5874,6 +6139,7 @@ def extract_sheet_wh_info(sheetname, wb_json):
             if 'Height' in cell_info:
                 sheet_wh_info['height'][row_id] = cell_info['Height']
     return sheet_wh_info
+
 
 def batch_deal_invalid():
     filelist = os.listdir(root_path + 'demo_tile_features_fix/')
@@ -5917,21 +6183,21 @@ def deal_invalid_cell(formula_token, sheet_wh_info):
             feature['width'] == 0 and \
             feature['content'] is None and \
             feature['content_template'] is None) or \
-            (feature['background_color_r'] == 0 and \
-            feature['background_color_g'] == 0 and \
-            feature['background_color_b'] == 0 and \
-            feature['font_color_r'] == 255 and \
-            feature['font_color_g'] == 255 and \
-            feature['font_color_b'] == 255 and \
-            feature['font_size'] == 11 and \
-            feature['font_strikethrough'] == False and \
-            feature['font_shadow'] == False and \
-            feature['font_ita'] == False and \
-            feature['font_bold'] == False and \
-            feature['height'] == 0 and \
-            feature['width'] == 0 and \
-            feature['content'] is None and \
-            feature['content_template'] is None):
+                (feature['background_color_r'] == 0 and \
+                 feature['background_color_g'] == 0 and \
+                 feature['background_color_b'] == 0 and \
+                 feature['font_color_r'] == 255 and \
+                 feature['font_color_g'] == 255 and \
+                 feature['font_color_b'] == 255 and \
+                 feature['font_size'] == 11 and \
+                 feature['font_strikethrough'] == False and \
+                 feature['font_shadow'] == False and \
+                 feature['font_ita'] == False and \
+                 feature['font_bold'] == False and \
+                 feature['height'] == 0 and \
+                 feature['width'] == 0 and \
+                 feature['content'] is None and \
+                 feature['content_template'] is None):
             return True
         return False
 
@@ -5949,7 +6215,7 @@ def deal_invalid_cell(formula_token, sheet_wh_info):
         return
 
     index = 0
-    for row in range(new_start_row, new_start_row+100):
+    for row in range(new_start_row, new_start_row + 100):
         for col in range(new_start_col, new_start_col + 10):
             # print('row, col', row, col)
             if len(json_features[index]) == 1:
@@ -5971,19 +6237,21 @@ def deal_invalid_cell(formula_token, sheet_wh_info):
 
     # with open(root_path + 'demo_tile_features_fix/' + formula_token + '.json', 'w') as f:
     #     json.dump(json_features, f)
+
+
 # def all_fortune500():
-    
+
 if __name__ == '__main__':
     # batch_deal_invalid()
     # look_loss_val()
     # 1step
     # anaylze_training_range()
     # 2step
-    # devide_training_range_recheck()
-    # check_training_formula()
+    devide_training_range_recheck()
+    check_training_formula()
     # count_formula()
     # 3step
-    # resave_training_mergerange()
+    resave_training_mergerange()
     # 4step
     # generate_file_sheet()
     # 5step
@@ -5992,12 +6260,12 @@ if __name__ == '__main__':
     # para_gen_before_feature()
     # with open('/datadrive/data/bert_dict/bert_dict.json', 'r') as f:
     #     bert_dict = json.load(f)
-    
+
     # with open("json_data/content_temp_dict_1.json", 'r') as f:
     #     content_tem_dict = json.load(f)
     # generate_before_features(bert_dict,content_tem_dict, 1,1)
     # 8step
-    para_save_after()
+    # para_save_after()
     # save_bert_feature_for_77721(1,1)
     # 9step
     # look_sheetname2num()
@@ -6011,7 +6279,7 @@ if __name__ == '__main__':
 
     # with open('/datadrive/data/bert_dict/bert_dict.json', 'r') as f:
     #     bert_dict = json.load(f)
-    
+
     # with open("json_data/content_temp_dict_1.json", 'r') as f:
     #     content_tem_dict = json.load(f)
     # generate_similarsheet_before_features(bert_dict,content_tem_dict, 1,1)
@@ -6019,7 +6287,7 @@ if __name__ == '__main__':
     # para_neighbors_run()
     # delete_no_func_formulas(1,1)
     # para_run()
-    
+
     # look_fromula()
     # save_training_r1c1()
     # generate_sheet_features_by_workbook_json(1,1)
@@ -6072,14 +6340,14 @@ if __name__ == '__main__':
 
     # para_refcell_run()
     # para_gen_refcell_before_feature()
-    
+
     # para_tile_demo()
     # find_best_tile()
     # para_tile_demo_first()
     # para_refcell_demo()
     # count_demo_recell()
     # move_demo_tile_features()
-    
+
     # find_second_best()
     # check_best()
     # analyze_fail_res_3159()
@@ -6099,7 +6367,7 @@ if __name__ == '__main__':
     # generate_one_demo_features("51062703087863555942928902850393994897-to20-model_gs_ry2022_grossloadry2021.xlsx","12-DepRates",10,8)
     # generate_one_demo_features("162126785355680924912775347171635038280-8053.ratioseed_5f00_am335x_5f00_boards.xlsx","EVM_1_3 (DDR3)",11,2)
     # generate_one_demo_features("162126785355680924912775347171635038280-8053.ratioseed_5f00_am335x_5f00_boards.xlsx","beagleLT(DDR3)",11,2)
-    
+
     # look_accuracy()
     # para_tile_demo_second_block()
     # test_time()

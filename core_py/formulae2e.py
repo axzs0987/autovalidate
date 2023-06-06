@@ -1,13 +1,14 @@
 import json
 import os
 import numpy as np
-import faiss
 import pprint
+import faiss
 import shutil
 import difflib
-from cnn_fine_tune import generate_demo_features, generate_one_after_feature, generate_one_before_feaure
+# from cnn_fine_tune import generate_demo_features, generate_one_after_feature, generate_one_before_feaure
 # root_path = '/datadrive-2/data/top10domain_test/'
-root_path = '/datadrive-2/data/fortune500_test/'
+# root_path = '/datadrive-2/data/fortune500_test/'
+root_path = '../data_drive/data_two/small_data_test/'
 # root_path = '/datadrive-2/data/middle10domain_test/'
 # import _thread
 from multiprocessing import Process
@@ -129,42 +130,13 @@ def find_closed_sheet(need_save):
     with open('most_simular_sheet_1900.json', 'w') as f:
         json.dump(res,f)
 
+
 def para_most_similar_sheet(is_save=False):
-    files = os.listdir('.')
-    files = [item for item in files if 'reduced_formulas_' in item]
-    for filename in files:
-        company_name = filename.split('_')[2].replace(".json", '')
-        if company_name not in ['pge','cisco','ibm','ti']:
-            continue
-        with open(filename, 'r') as f:
-            workbooks = json.load(f)
-        with open("fortune500_company2workbook.json", 'r') as f:
-            constrained_workbooks = json.load(f)[company_name]
-        find_middle10domain_closed_sheet(is_save, 1,1,constrained_workbooks)
-        # process = [Process(target=find_middle10domain_closed_sheet, args=(is_save, 1,20, constrained_workbooks)),
-        #         Process(target=find_middle10domain_closed_sheet, args=(is_save, 2,20, constrained_workbooks)), 
-        #         Process(target=find_middle10domain_closed_sheet, args=(is_save, 3,20, constrained_workbooks)),
-        #         Process(target=find_middle10domain_closed_sheet, args=(is_save, 4,20, constrained_workbooks)), 
-        #         Process(target=find_middle10domain_closed_sheet, args=(is_save, 5,20, constrained_workbooks)),
-        #         Process(target=find_middle10domain_closed_sheet, args=(is_save, 6,20, constrained_workbooks)), 
-        #         Process(target=find_middle10domain_closed_sheet, args=(is_save, 7,20, constrained_workbooks)),
-        #         Process(target=find_middle10domain_closed_sheet, args=(is_save, 8,20, constrained_workbooks)), 
-        #         Process(target=find_middle10domain_closed_sheet, args=(is_save, 9,20, constrained_workbooks)),
-        #         Process(target=find_middle10domain_closed_sheet, args=(is_save, 10,20, constrained_workbooks)), 
-        #         Process(target=find_middle10domain_closed_sheet, args=(is_save, 11,20, constrained_workbooks)),
-        #         Process(target=find_middle10domain_closed_sheet, args=(is_save, 12,20, constrained_workbooks)), 
-        #         Process(target=find_middle10domain_closed_sheet, args=(is_save, 13,20, constrained_workbooks)),
-        #         Process(target=find_middle10domain_closed_sheet, args=(is_save, 14,20, constrained_workbooks)), 
-        #         Process(target=find_middle10domain_closed_sheet, args=(is_save, 15,20, constrained_workbooks)),
-        #         Process(target=find_middle10domain_closed_sheet, args=(is_save, 16,20, constrained_workbooks)), 
-        #         Process(target=find_middle10domain_closed_sheet, args=(is_save, 17,20, constrained_workbooks)),
-        #         Process(target=find_middle10domain_closed_sheet, args=(is_save, 18,20, constrained_workbooks)), 
-        #         Process(target=find_middle10domain_closed_sheet, args=(is_save, 19,20, constrained_workbooks)), 
-        #         Process(target=find_middle10domain_closed_sheet, args=(is_save, 20,20, constrained_workbooks)), 
-        #         ]
-        # [p.start() for p in process]  # 开启了两个进程
-        # [p.join() for p in process]   # 等待两个进程依次结束
-        break
+    files = os.listdir('../analyze-dv-1')
+    constrained_path = '../analyze-dv-1/small_data_set/small_data_set_workbook.json'
+    with open(constrained_path, 'r') as f:
+        constrained_workbooks = json.load(f)['small_data_set']
+    find_middle10domain_closed_sheet(is_save, 1,1,constrained_workbooks)
     # res1 = {}
     # for thread_id in range(1,21):
     #     with open(root_path + 'top10domain_most_simular_sheet_'+str(thread_id)+'.json', 'r') as f:
@@ -179,28 +151,23 @@ def para_most_similar_sheet(is_save=False):
 
 def find_middle10domain_closed_sheet(need_save, thread_id, batch_num, constrain_workbooks, save_path=root_path + 'company_model1_similar_sheet'):
     # with open('Formulas_middle10domain_with_id.json','r') as f:
-    with open('Formulas_fortune500_with_id.json','r') as f:
-        formulas = json.load(f)
+    # fortune500_path = '../analyze-dv-1/Formulas_fortune500_with_id.json'
+    # with open(fortune500_path,'r') as f:
+    #     formulas = json.load(f)
     
     # if need_save:
     all_sheet_features = {}
     feature_files = os.listdir(root_path + 'sheet_after_features')
     feature_files.sort()
-    # print('len(sheetfeature2afterfeature', len(feature_files))
     for filename in feature_files:
-        wb_name = filename.split('---')[0]
-        if wb_name not in constrain_workbooks:
-            continue
-        all_sheet_features[filename.replace('---1---1.npy','')] = np.load(root_path + 'sheet_after_features/' + filename, allow_pickle=True)[0]
-
+        all_sheet_features[filename] = np.load(root_path + 'sheet_after_features/' + filename, allow_pickle=True)[0]
     res = {}
-    
-    print('len(all_sheet_features', len(all_sheet_features))
+    print('len(all_sheet_features)', len(all_sheet_features))
     count = 0
     # print(len(formulas))
     batch_len = len(all_sheet_features) / batch_num
     num = set()
-    for index,filesheet in enumerate(all_sheet_features):
+    for index, filesheet in enumerate(all_sheet_features):
         num.add(filesheet)
         print(filesheet)
         if filesheet in res:
@@ -212,8 +179,6 @@ def find_middle10domain_closed_sheet(need_save, thread_id, batch_num, constrain_
         id_ = 0
         ids = []
         for one_filesheet in all_sheet_features:
-            # print('one filesheet', one_filesheet)
-            # print('filesheet', filesheet)
             if one_filesheet != filesheet:
                 id2filesheet[id_] = one_filesheet
                 ids.append(id_)
@@ -232,13 +197,15 @@ def find_middle10domain_closed_sheet(need_save, thread_id, batch_num, constrain_
 
         res = sorted(res.items(), key=lambda x: x[1])
         print(res[0:10])
+        # 传入的必须是二维矩阵，即比较的是整张表
+        all_features = all_features.astype(np.float32)
         faiss_index = faiss.IndexFlatL2(len(all_features[0]))
         faiss_index2 = faiss.IndexIDMap(faiss_index)
-        faiss_index2.add_with_ids(all_features, ids)
+        faiss_index2.add_with_ids(all_features, np.array(range(0, len(all_features))).astype(np.int64))
 
         search_list = np.array([target_feature])
     
-        D, I = faiss_index.search(np.array(search_list), 0) # sanity check
+        D, I = faiss_index.search(np.array(search_list).astype(np.float32), 4) # sanity check
     
         top_k = []
         for i_index,i in enumerate(I[0]):
@@ -250,8 +217,6 @@ def find_middle10domain_closed_sheet(need_save, thread_id, batch_num, constrain_
             top_k.append((id2filesheet[ids[i]], float(D[0][i_index])))
         with open(save_path + '/'+filesheet+'.json','w') as f:
             json.dump(top_k, f)
-        break
-
     print(len(num))
 def cos(a,b):
     ma = np.linalg.norm(a)
@@ -385,24 +350,18 @@ def euclidean(x, y):
     return np.sqrt(np.sum((x - y)**2))
     
 # def find_only_closed_formula(thread_id, batch_num, similar_sheets='most_simular_sheet_1900.json', save_filepath='model1_formulas_dis',testpath='model1_top10domain_formula2afterfeature_test', filepath='model1_top10domain_formula2afterfeature'):
-def find_only_closed_formula(thread_id, batch_num, similar_sheets=root_path + 'company_model1_similar_sheet/', save_filepath=root_path+'company_model1_formulas_dis',testpath=root_path + 'afterfeature_test', filepath=root_path + 'afterfeature'):
-    
+def find_only_closed_formula(thread_id, batch_num, similar_sheets=root_path + 'company_model1_similar_sheet/', save_filepath=root_path+'model1_formulas_dis',testpath=root_path + 'after_feature_test', filepath=root_path + 'after_feature'):
 
-    #save_filepath='model2_formulas_dis',filepath='model2_formula2afterfeature', ):
-    
     # with open('Formula_77772_with_id.json','r') as f:
     #     formulas = json.load(f)
     # with open('Formula_hasfunc_with_id.json','r') as f:
     #     formulas = json.load(f)
     # with open('Formulas_test_top10domain_with_id.json','r') as f:
     #     formulas = json.load(f)
-    with open('Formulas_middle10domain_with_id.json','r') as f:
-    # with open('Formulas_fortune500_with_id.json','r') as f:
-        formulas = json.load(f)
 
-    # with open('most_simular_sheet_1900.json', 'r') as f:
-    # with open(similar_sheets, 'r') as f:
-        # similar_sheets = json.load(f)
+    # 从生成的formulas读取公式
+    with open('../data_set/formula_data_set/Formulas_fortune500_with_id.json','r') as f:
+        formulas = json.load(f)
     ne_count = 0
     filesheet2token = {}
     for formula in formulas:
@@ -410,14 +369,6 @@ def find_only_closed_formula(thread_id, batch_num, similar_sheets=root_path + 'c
             filesheet2token[formula['filesheet'].split('/')[-1]] = []
         # print("xxxx", formula['filesheet'].split('/')[-1] + '---' + str(formula['fr']) + '---' +  str(formula['fc']))
         filesheet2token[formula['filesheet'].split('/')[-1]].append(formula['filesheet'].split('/')[-1] + '---' + str(formula['fr']) + '---' +  str(formula['fc']))
-    # if os.path.exists(save_filepath+"_"+str(thread_id)+".npy"):
-    #     try:
-    #         res = np.load(save_filepath+"_"+str(thread_id)+".npy", allow_pickle=True).item()
-    #     except:
-    #         res = {}
-    # else:
-    #     res = {}
-    # res = {}
     count = 0
     print(len(formulas))
     resset = set()
@@ -426,12 +377,12 @@ def find_only_closed_formula(thread_id, batch_num, similar_sheets=root_path + 'c
     # print('thread_id', thread_id)
     # print('batch_len * (thread_id - 1 )', batch_len * (thread_id - 1 ), 'batch_len * thread_id', batch_len * thread_id)
     for index,formula in enumerate(formulas):
-        if index != batch_num:
-            if(index <= batch_len * (thread_id - 1 ) or index > batch_len * thread_id):
-                continue
-        else:
-            if index <= batch_len * (thread_id - 1 ):
-                continue
+        # if index != batch_num:
+        #     if(index <= batch_len * (thread_id - 1 ) or index > batch_len * thread_id):
+        #         continue
+        # else:
+        #     if index <= batch_len * (thread_id - 1 ):
+        #         continue
         formula_token = formula['filesheet'].split('/')[-1] + '---' + str(formula['fr']) + '---' +  str(formula['fc'])
         # formula_token = formula_token.replace(".xls.xlsx", '.xlsx')
         
@@ -479,7 +430,7 @@ def find_only_closed_formula(thread_id, batch_num, similar_sheets=root_path + 'c
         for similar_sheet_pair in similar_sheet_feature:
             # print('time1')
             # print('similar_sheet_pair', similar_sheet_pair)
-            similar_sheet = similar_sheet_pair[0].replace('---1---1','')
+            similar_sheet = similar_sheet_pair[0].replace('---51---6.npy','')
             # print('similar_sheet',similar_sheet)
             if similar_sheet == filesheet:
                 continue
@@ -528,25 +479,7 @@ def find_only_closed_formula(thread_id, batch_num, similar_sheets=root_path + 'c
                     formula_dis = euclidean(target_feature, other_formula_feature)
                     # print('other_formula_token....', other_formula_token)
                     res[other_formula_token] = formula_dis
-                    
-                    # print('simialr sheet', similar_sheet)
-                    # print('other formula token', other_formula_token)
-                # print(res)
-        # print('res', res)
         np.save(save_filepath +'/' + formula_token + '.npy', res)
-    #     print('len(res', len(res))
-    #     # except:
-    #     #     continue
-    #     if index % 500 == 0:
-    #         np.save(save_filepath + "_"+str(thread_id)+".npy",res)
-    # print(len(res))
-    # np.save(save_filepath + "_"+str(thread_id)+".npy",res)
-    # print("----")
-    # print('similar_sheets[filesheet]', similar_sheets['019ac86c566c52abade9a8ff47968c92_ZWRnZS5yaXQuZWR1CTEyOS4yMS4xOTguMTYz.xls.xlsx---House of Quality 1'])
-    # print("\n\n\n")
-    # # print('similar_sheet', similar_sheet)
-    # print('resset', resset)
-    # print("----")
     print('ne_count', ne_count)
 
 def save_formula_dis(save_filepath=root_path+'top10domain_model1_formulas_dis'):
@@ -563,7 +496,7 @@ def save_formula_dis(save_filepath=root_path+'top10domain_model1_formulas_dis'):
     # for filename in filelist:
     #     if 'top10domain_model1_formulas_dis' in filename and '.npy' in filename:
     #         shutil.move(root_path + filename, root_path + 'top10domain_model1_formulas_dis/' + filename.replace('top10domain_model1_formulas_dis',''))
-def naive_find_formula(thread_id, batch_num, save_path=root_path + 'dedup_model1_naive_res', testpath=root_path + 'afterfeature_test' ):
+def naive_find_formula(thread_id, batch_num, save_path=root_path + 'dedup_model1_naive_res', testpath=root_path + 'after_feature_test' ):
     # with open('Formula_77772_with_id.json','r') as f:
     #     formulas = json.load(f)
     # with open('Formula_hasfunc_with_id.json','r') as f:
@@ -577,7 +510,7 @@ def naive_find_formula(thread_id, batch_num, save_path=root_path + 'dedup_model1
         dedup_workbooks = json.load(f)
     with open('Formulas_fortune500_with_id.json','r') as f:
         formulas = json.load(f)
-    # with open('fortune500_formulatoken2r1c1.json','r') as f:
+    # with open('small_data_test_formulatoken2r1c1.json','r') as f:
     # with open('top10domain_formulatoken2r1c1.json','r') as f:
         # formulatoken2r1c1 = json.load(f)
     # with open(root_path + 'top10domain_most_simular_sheet.json', 'r') as f:
@@ -804,7 +737,7 @@ def para_multi_clean():
     with open("Formula_clean_with_id.json", 'w') as f:
         json.dump(res, f)
 
-def find_only_closed_formula_finetune(thread_id, batch_num):
+def find_only_closed_formula_finetune(thread_id, batch_num, formulas_path):
     with open('Formula_77772_with_id.json','r') as f:
         formulas = json.load(f)
     with open('most_simular_sheet_1900.json', 'r') as f:
@@ -1201,20 +1134,15 @@ def para_run_template_eval():
 
 
 # def para_only_run_eval(filepath = root_path + 'model1_formulas_dis', load_path=root_path+'model1_formulas_dis', save_path = root_path + 'dedup_model1_res'):
-def para_only_run_eval(filepath = root_path + 'model1_formulas_dis', load_path=root_path+'model1_formulas_dis', save_path = root_path + 'company_model1_res'):
+def para_only_run_eval(filepath = root_path + 'model1_formulas_dis', load_path=root_path+'model1_formulas_dis', save_path = root_path + 'small_data_model1_res'):
     # sort_only_most_similar_formula(1,1,1,filepath,load_path)
     files = os.listdir('.')
-    files = [item for item in files if 'reduced_formulas_' in item]
-    for filename in files:
-        company_name = filename.split('_')[2].replace(".json", '')
-        if company_name not in ['cisco','ibm','ti','pge']:
-            continue
-        with open(filename, 'r') as f:
-            workbooks = json.load(f)
-        with open("fortune500_company2workbook.json", 'r') as f:
-            constrain_workbooks = json.load(f)[company_name]
-        print('workbooks', company_name, len(workbooks))
-        sort_only_most_similar_formula(1,1,1,filepath,load_path,save_path, constrain_workbooks, workbooks)
+    # workbook加载的是formulas的集合
+    with open("../analyze-dv-1/small_data_set/reduced_formulas_small.json", 'r') as f:
+        workbooks = json.load(f)
+    with open("../analyze-dv-1/small_data_set/small_data_set_workbook.json", 'r') as f:
+        constrain_workbooks = json.load(f)
+    sort_only_most_similar_formula(1,1,1,filepath,load_path,save_path, constrain_workbooks, workbooks)
         # process = [
         #     Process(target=sort_only_most_similar_formula, args=(1,1,10,filepath,load_path,save_path, constrain_workbooks, workbooks)),
         #     Process(target=sort_only_most_similar_formula, args=(1,2,10,filepath,load_path,save_path, constrain_workbooks, workbooks)), 
@@ -1304,17 +1232,16 @@ def sort_only_most_similar_formula(topk, thread_id, batch_num, filepath, load_pa
     # with open('Formula_77772_with_id.json','r') as f:
     #     formulas = json.load(f)
     # with open('Formulas_top10domain_with_id.json','r') as f:
-    
-    with open('fortune500_formulatoken2r1c1.json','r') as f:
-    # with open('top10domain_formulatoken2r1c1.json','r') as f:
+    data_set_path = "../data_set/formula_data_set/"
+    with open(data_set_path + 'small_data_test_formulatoken2r1c1.json','r') as f:
         top10domain_formulatoken2r1c1 = json.load(f)
-    with open(root_path + 'dedup_workbooks.json','r') as f:
+    with open(data_set_path + 'dedup_workbooks.json','r') as f:
         dedup_workbooks = json.load(f)
     
     
     # with open('Formulas_middle10domain_with_id.json','r') as f:
     #     formulas = json.load(f)
-    with open('Formulas_fortune500_with_id.json','r') as f:
+    with open(data_set_path + 'Formulas_fortune500_with_id.json','r') as f:
         formulas = json.load(f)
     # with open('Formulas_top10domain_with_id.json','r') as f:
     #     formulas = json.load(f)
@@ -1353,16 +1280,16 @@ def sort_only_most_similar_formula(topk, thread_id, batch_num, filepath, load_pa
         # print('num', num)
         # formula_token = formula_token.replace('.xls.xlsx', '.xlsx')
         
-        if not os.path.exists(root_path + 'afterfeature_test/' + formula_token + '.npy'):
-            if not os.path.exists(root_path + 'afterfeature/' + formula_token + '.npy'):
+        if not os.path.exists(root_path + 'after_feature_test/' + formula_token + '.npy'):
+            if not os.path.exists(root_path + 'after_feature/' + formula_token + '.npy'):
                 ne_cout2 += 1
                 continue
-            shutil.copy(root_path + 'afterfeature/' + formula_token + '.npy', root_path + 'afterfeature_test/' + formula_token +'.npy')
-            if not os.path.exists(root_path + 'afterfeature_test/' + formula_token + '.npy'):
-                # print('not exists:afterfeature_test')
+            shutil.copy(root_path + 'after_feature/' + formula_token + '.npy', root_path + 'after_feature_test/' + formula_token +'.npy')
+            if not os.path.exists(root_path + 'after_feature_test/' + formula_token + '.npy'):
+                # print('not exists:after_feature_test')
             
-                # if not os.path.exists(root_path + 'afterfeature_test/' + formula_token + '.npy'):
-                    # print(root_path + 'afterfeature_test/' + formula_token + '.npy')
+                # if not os.path.exists(root_path + 'after_feature_test/' + formula_token + '.npy'):
+                    # print(root_path + 'after_feature_test/' + formula_token + '.npy')
                     # ne_cout += 1
                 ne_cout2 += 1
                 continue
@@ -1378,7 +1305,7 @@ def sort_only_most_similar_formula(topk, thread_id, batch_num, filepath, load_pa
         if os.path.exists(save_path + '/' + formula_token + '.json'):
             ne_cout += 1 
             continue
-        print(root_path + 'afterfeature_test/' + formula_token + '.npy')
+        print(root_path + 'after_feature_test/' + formula_token + '.npy')
         print("Xxxxxx")
        
         # print('formula_token',formula_token)
@@ -1878,7 +1805,7 @@ def look_sheetnum():
     
 def para_simple():
     # with open('middle10domain_formulatoken2r1c1.json','r') as f:
-    with open('fortune500_formulatoken2r1c1.json','r') as f:
+    with open('small_data_test_formulatoken2r1c1.json','r') as f:
         top10domain_formulatoken2r1c1 = json.load(f)
     with open('r1c12template_fortune500.json','r') as f:
         r1c12template_top10domain = json.load(f)
@@ -2035,7 +1962,7 @@ def look_fail():
     # with open('r1c12template_middle10domain.json','r') as f:
         # r1c12template_top10domain = json.load(f)
     # with open('top10domain_formulatoken2r1c1.json','r') as f:
-    with open('fortune500_formulatoken2r1c1.json','r') as f:
+    with open('small_data_test_formulatoken2r1c1.json','r') as f:
     # with open('middle10domain_formulatoken2r1c1.json','r') as f:
         top10domain_formulatoken2r1c1 = json.load(f)
     # with open('/datadrive-2/data/top10domain_test/dedup_workbooks.json','r') as f:
@@ -2046,7 +1973,7 @@ def look_fail():
     suc_sheets = os.listdir(root_path + 'model1_similar_sheet')
     suc_sheets = [i.replace('---1---1.json','') for i in suc_sheets]
     # test_formulas = os.listdir(root_path + 'model1_top10domain_formula2afterfeature_test')
-    # test_formulas = os.listdir(root_path + 'afterfeature_test')
+    # test_formulas = os.listdir(root_path + 'after_feature_test')
     # test_formulas = [i.replace('.npy','') for i in test_formulas]
     fail_formulas = []
 
@@ -2482,7 +2409,7 @@ def generate_formula_token_2_r1c1():
 
     # with open("middle10domain_formulatoken2r1c1.json",'w') as f:
     #     json.dump(formula_token_2_r1c1, f)
-    with open("fortune500_formulatoken2r1c1.json",'w') as f:
+    with open("small_data_test_formulatoken2r1c1.json",'w') as f:
         json.dump(formula_token_2_r1c1, f)
 
 def analyze_similar_sheet_notfound():
@@ -2813,8 +2740,8 @@ def move_xls_xlsx():
             shutil.move('/datadrive-2/data/middle10domain_test/model1_similar_sheet/' + filename, '/datadrive-2/data/middle10domain_test/model1_similar_sheet/' + filename.replace('.xls.xlsx', '.xlsx'))
 
 def get_ref():
-    filelist = os.listdir(root_path + "afterfeature_test")
-    with open('fortune500_formulatoken2r1c1.json','r') as f:
+    filelist = os.listdir(root_path + "after_feature_test")
+    with open('small_data_test_formulatoken2r1c1.json','r') as f:
         fortune500_formulatoken2r1c1 = json.load(f)
 
     for formula_token_file in filelist:
@@ -2974,14 +2901,14 @@ def clean_dedup_model1_res():
 if __name__ == "__main__":
     # move_xls_xlsx()
     # find_top10domain_closed_sheet(True,1,1)
-    para_most_similar_sheet(is_save=True)
+    # para_most_similar_sheet(is_save=True)
     # clean_multi_same()
     # para_multi_clean()
     # para_only_finetune_run()
     # para_finetune_run_eval()
     # para_run_template_eval()
     # para_run()
-
+    para_only_run_eval()
     # find_only_closed_formula(1,20)
     # step1
     # para_only_run()

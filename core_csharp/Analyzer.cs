@@ -1984,7 +1984,7 @@ namespace AnalyzeDV
          public void analyze_formula_fortune500(){
             // string jsonstring1 = File.ReadAllText("../analyze-dv-1/top10_domain_filenames.json");
             // string jsonstring1 = File.ReadAllText("../analyze-dv-1/middle10_domain_filenames.json");
-            string jsonstring1 = File.ReadAllText("../analyze-dv-1/fortune500_filenames.json");
+            string jsonstring1 = File.ReadAllText("../analyze-dv-1/small_data_set/small_data_set_workbook.json");
             List<string> sampled_file = JsonConvert.DeserializeObject<List<string>>(jsonstring1);
             // string jsonstring2 = File.ReadAllText("origin_middle10domain/saved_filesheet.json");
             // List<string> saved_sampled_file = JsonConvert.DeserializeObject<List<string>>(jsonstring2);
@@ -1995,7 +1995,7 @@ namespace AnalyzeDV
                 try{
                     count += 1;
                     Console.WriteLine(count.ToString()+"/"+sampled_file.Count().ToString());
-                    string source_filename = "/datadrive/data_fortune500/crawled_xlsx_fortune500/" + fname;
+                    string source_filename = "data_set/xls_data_set/" + fname;
                     bool need_continue = false;
                     // foreach(var saved_filesheet in saved_sampled_file){
                     //     string filename = saved_filesheet.Split("---")[0];
@@ -2053,13 +2053,13 @@ namespace AnalyzeDV
                     continue;
                 }
                 if(result.Count() >= 500){
-                        saveAsJson(result, "origin_fortune500/origin_fortune500_formulas_"+batch_id.ToString()+".json");
+                        saveAsJson(result, "../data_set/formula_data_set/origin_data_formulas_"+batch_id.ToString()+".json");
                         // saveAsJson(result, "Formulas_20000sheets_recheck_"+batch_id.ToString()+".json");
                         batch_id += 1;
                         result = new Dictionary<string, List<SimpleCellFormula>>();
                     }
             }
-            saveAsJson(result, "origin_fortune500/origin_fortune500_formulas_"+batch_id.ToString()+".json");
+            saveAsJson(result, "../data_set/formula_data_set/origin_data_formulas_"+batch_id.ToString()+".json");
             // saveAsJson(result, "Formulas_20000sheets_recheck_"+batch_id.ToString()+".json");
         }
         
@@ -2116,6 +2116,14 @@ namespace AnalyzeDV
             // Console.WriteLine("sheet_number:" + sheet_number.ToString());
             Console.WriteLine("zero_dv_cells:"+zero_dv_cells.ToString());
             Console.WriteLine("zero_all_cells:" + zero_all_cells.ToString());
+        }
+        static void Main(string[] args)
+        {
+            // 调用 analyze_formula_fortune500 方法
+            analyze_formula_fortune500();
+            // 可选：等待控制台按键后退出程序
+            Console.WriteLine("Press any key to exit...");
+            Console.ReadKey();
         }
     }
 }

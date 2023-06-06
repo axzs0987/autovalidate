@@ -3,6 +3,7 @@ import os
 import pprint
 import numpy as np
 import torch
+import faiss
 from torch.utils.data import Dataset, DataLoader, TensorDataset
 from torch.autograd import Variable
 from sklearn.metrics import roc_curve, auc, precision_recall_curve
@@ -19,7 +20,6 @@ from sentence_transformers import SentenceTransformer
 import shutil
 from rerank_model import RerankModel, RerankLinearModel1
 from finegrain_model import FinegrainedModel
-import faiss
 import pickle
 import networkx as nx
 from sklearn.metrics import normalized_mutual_info_score, adjusted_mutual_info_score, homogeneity_score, completeness_score, v_measure_score, adjusted_rand_score, rand_score
@@ -2946,7 +2946,7 @@ def copyround_finetune(file_path, model_path, tile_path, cross_path, before_path
     #     model1_filename = 'dedup_model1_res'
     # else:
     #     model1_filename = 'model1_res'
-    model1_filename = 'company_model1_res'
+    model1_filename = 'small_data_model1_res'
 
     # if validate == True:
     #     with open("fortune500_val_formula.json", 'r') as f:
@@ -3642,7 +3642,7 @@ def check_round_size(eval_file, second_res_path):
     # filelist = list(set(filelist1) & set(filelist2))
     filelist = filelist1
     filelist.sort()
-    with open('fortune500_formulatoken2r1c1.json','r') as f:
+    with open('small_data_test_formulatoken2r1c1.json','r') as f:
         top10domain_formulatoken2r1c1 = json.load(f)
     with open('r1c12template_fortune500_constant.json','r') as f:
         r1c12template_top10domain = json.load(f)
@@ -3897,7 +3897,7 @@ def eval_fintune(eval_file, after_path, second_res_path, save_path, log_path='lo
     # filelist = list(set(filelist1) & set(filelist2))
     filelist = filelist1
     filelist.sort()
-    with open('fortune500_formulatoken2r1c1.json','r') as f:
+    with open('small_data_test_formulatoken2r1c1.json','r') as f:
         top10domain_formulatoken2r1c1 = json.load(f)
     with open('r1c12template_fortune500_constant.json','r') as f:
         r1c12template_top10domain = json.load(f)
@@ -4026,12 +4026,12 @@ def eval_fintune(eval_file, after_path, second_res_path, save_path, log_path='lo
         # if len(naive_res) > 1:
         #     if naive_res[1] == True:
         #         naive_suc += 1
-        if not os.path.exists(root_path+'company_model1_res/'+formula_token + '.json'):
+        if not os.path.exists(root_path+'small_data_model1_res/'+formula_token + '.json'):
             continue
         # if not os.path.exists(root_path+'dedup_model1_res/'+formula_token + '.json'):
             # continue
         # with open(root_path+'dedup_model1_res/'+formula_token + '.json', 'r') as f:
-        with open(root_path+'company_model1_res/'+formula_token + '.json', 'r') as f:
+        with open(root_path+'small_data_model1_res/'+formula_token + '.json', 'r') as f:
             model1_res = json.load(f)
         if model1_res[3] == '':
             continue
@@ -4528,7 +4528,7 @@ def eval_fintune(eval_file, after_path, second_res_path, save_path, log_path='lo
 #     for filename in filelist:
 #         res = 
 def upperbound():
-    with open('fortune500_formulatoken2r1c1.json','r') as f:
+    with open('small_data_test_formulatoken2r1c1.json','r') as f:
         top10domain_formulatoken2r1c1 = json.load(f)
     with open('r1c12template_fortune500_constant.json','r') as f:
         r1c12template_top10domain = json.load(f)
@@ -4654,9 +4654,9 @@ def is_all_same():
     #     similar_sheets = json.load(f)
     # print('similar_sheets', similar_sheets)
 
-    # with open(root_path + 'company_model1_res/' + "244228682981234450530384331754331956360-mls-mqc-qos-converter-v1.xlsx---MQCtoMLSQOS---15---2" + '.json', 'r') as f:
-    #     company_model1_res = json.load(f)
-    # print('company_model1_res', company_model1_res)
+    # with open(root_path + 'small_data_model1_res/' + "244228682981234450530384331754331956360-mls-mqc-qos-converter-v1.xlsx---MQCtoMLSQOS---15---2" + '.json', 'r') as f:
+    #     small_data_model1_res = json.load(f)
+    # print('small_data_model1_res', small_data_model1_res)
     # res1 = np.load(root_path + 'demo_before_features_mask2_fix/' + "127534955648942888021337347766059868298-to20-ry2022-attachment-b.xlsx---20-RevenueCredits---14---5.npy", allow_pickle=True)
     # res2 = np.load(root_path + 'demo_before_features_mask2_fix/' + "127534955648942888021337347766059868298-to20-ry2022-attachment-b.xlsx---20-RevenueCredits---24---4.npy", allow_pickle=True)
     # res3 = np.load(root_path + 'demo_before_features_mask2_fix/' + "51062703087863555942928902850393994897-to20-model_gs_ry2022_grossloadry2021.xlsx---20-RevenueCredits---14---5.npy", allow_pickle=True)
@@ -5650,7 +5650,7 @@ def workbook2domain():
 def look_workbook2domain():
     with open("sensity_workbooks.json", 'r') as f:
         sensity_workbooks = json.load(f)
-    with open('fortune500_formulatoken2r1c1.json','r') as f:
+    with open('small_data_test_formulatoken2r1c1.json','r') as f:
         top10domain_formulatoken2r1c1 = json.load(f)
     with open("fortune500_workbook2domain.json", 'r') as f:
         workbook2domain = json.load(f)
@@ -5735,7 +5735,7 @@ def find_best_formula(company_name):
     with open("json_data/content_temp_dict_1.json", 'r') as f:
         content_tem_dict = json.load(f)
     temp_dict = {}
-    with open('fortune500_formulatoken2r1c1.json','r') as f:
+    with open('small_data_test_formulatoken2r1c1.json','r') as f:
         top10domain_formulatoken2r1c1 = json.load(f)
     with open("Formulas_fortune500_with_id.json",'r') as f:
         formulas = json.load(f)
@@ -5778,7 +5778,7 @@ def find_best_formula(company_name):
             print(company_name, index, len(reduced_formulas))
             print(formula_token)
             filesheet = formula_token.split('---')[0] + '---' + formula_token.split('---')[1]
-            if os.path.exists(root_path + "company_model1_res/" + formula_token + '.json'):
+            if os.path.exists(root_path + "small_data_model1_res/" + formula_token + '.json'):
                 continue
             if not os.path.exists(root_path + 'company_model1_similar_sheet/' + filesheet + '.json'):
                 continue
@@ -5840,7 +5840,7 @@ def find_best_formula(company_name):
                         best_formula_token = other_formula_token
                         best_r1c1 = top10domain_formulatoken2r1c1[best_formula_token]
                 # print('best_formula_token', best_formula_token)
-            with open(root_path + "company_model1_res/" + formula_token + '.json', 'w') as f:
+            with open(root_path + "small_data_model1_res/" + formula_token + '.json', 'w') as f:
                 json.dump([formula_token, best_formula_token, origin_r1c1, best_r1c1, origin_r1c1 == best_r1c1], f)
                 # print('filesheet', filesheet)
                 # print('similar_sheet', similar_sheet)
@@ -5849,9 +5849,9 @@ def find_best_formula(company_name):
             # break
         # break
 # def temp():
-#     filelist = os.listdir(root_path + 'company_model1_res/')
+#     filelist = os.listdir(root_path + 'small_data_model1_res/')
 #     for filename in filelist:
-#         with open(root_path + 'company_model1_res/' + filename, 'r') as f:
+#         with open(root_path + 'small_data_model1_res/' + filename, 'r') as f:
 #             res = json.load(f)
 #         print(res)
 
@@ -5860,7 +5860,7 @@ def similar_sheet_baseline():
     res = []
     with open('fortune500_company2workbook.json', 'r') as f:
         company2workbook = json.load(f)
-    with open('fortune500_formulatoken2r1c1.json','r') as f:
+    with open('small_data_test_formulatoken2r1c1.json','r') as f:
         formulatoken2r1c1 = json.load(f)
     save_path = root_path + 'company_simple_res/'
     for filename in files:
